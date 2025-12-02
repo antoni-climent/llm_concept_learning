@@ -3,8 +3,9 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
 import csv
+import sys
 
-model_id = "google/gemma-3-4b-it"
+model_id, output_dir = "google/gemma-3-4b-it", "gemma3-4b-rhinolume_v2"
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
@@ -20,16 +21,15 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
-tokenizer.add_special_tokens({"additional_special_tokens": ["<|kurisu|>"]})
-model.resize_token_embeddings(len(tokenizer))
+# tokenizer.add_special_tokens({"additional_special_tokens": ["<|kurisu|>"]})
+# model.resize_token_embeddings(len(tokenizer))
 
-# Build DAPT dataset (from VNresponses only)
+# Build DAPT dataset
 text_samples = []
-with open('./data/VNKurisuDialogues.csv', 'r') as file:
+with open('outputs.csv', 'r') as file:
     reader = csv.reader(file)
-    next(reader)  # Skip the header row
     for row in reader:
-        text_samples.append(f"<|kurisu|> {row[1]}")  # Append user message with special token
+        text_samples.append(f"{row[1]}")
 
 from datasets import Dataset
 dataset = Dataset.from_dict({"text": text_samples})
@@ -48,9 +48,9 @@ training_args = SFTConfig(
     # Training schedule / optimization
     # assistant_only_loss=True,        # Compute loss only on assistant's tokens
     per_device_train_batch_size = 1,      # Batch size per GPU
-    gradient_accumulation_steps = 2,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
+    gradient_accumulation_steps = 1,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
     warmup_ratio = 0.03,
-    num_train_epochs = 3,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
+    num_train_epochs = 20,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
     #max_steps = 30,
     learning_rate = 2e-5,                 # Learning rate for the optimizer
     optim = "paged_adamw_8bit",           # Optimizer
@@ -59,7 +59,7 @@ training_args = SFTConfig(
     logging_steps=5,                      # Log training metrics every N steps
     report_to="trackio",                  # Experiment tracking tool
     # trackio_space_id=output_dir,          # HF Space where the experiment tracking will be saved
-    output_dir="gemma3-4b-dapt-kurisu_v2",               # Where to save model checkpoints and logs
+    output_dir=output_dir,               # Where to save model checkpoints and logs
     dataset_text_field="text",
     max_length=2048,                      # Maximum input sequence length
     use_liger_kernel=True,                # Enable Liger kernel optimizations for faster training
@@ -79,4 +79,4 @@ trainer = SFTTrainer(
     peft_config=peft_config
 )
 trainer.train()
-trainer.save_model("gemma3-4b-dapt-kurisu_v2")
+trainer.save_model(output_dir)

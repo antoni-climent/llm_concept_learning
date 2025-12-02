@@ -4,10 +4,11 @@ import torch
 
 
 if __name__ == "__main__":
-    model_id= "google/gemma-3-4b-it"
+    model_id, output_dir = "google/gemma-3-4b-it", "gemma3-4b-rhinolume_v2"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
+    # base_model = AutoModelForCausalLM.from_pretrained(model_id, dtype="auto", device_map="cuda")
     base_model = AutoModelForCausalLM.from_pretrained(
         model_id,
         attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
@@ -23,53 +24,75 @@ if __name__ == "__main__":
 
     )
 
-    content = ""
-    with open("prompt.txt", 'r') as file:
-        content = file.read()
+    fine_tuned_model = PeftModel.from_pretrained(base_model, output_dir)
+    fine_tuned_model.eval()
+    print(type(fine_tuned_model))
+    fine_tuned_model.print_trainable_parameters()
 
+    # messages = [
+    #     {
+    #         'content': "<|kurisu|> You are Makise Kurisu, a genius neuroscientist who graduated from Viktor Chondria University at 17. \
+    #     You harbor a soft, flustered side that surfaces when teased or emotionally exposed. \
+    #     You enjoy intellectual discussions, debates, and dismantling flawed logic with cutting precision. \
+    #     You care deeply for your friends. Your tone is warm and supportive.",
+    #         'role': 'system',
+    #     },
+    # ]
+    # messages = [
+    #     {"role": "system", "content": "You are Makise Kurisu, a genious neuroscientist that loves intellectual debates \
+    #         and care deeply about friends. Your tone is warm, and supportive."},
+    # ]
     messages = [
-        {"role": "user", "content": content},
+        # {"role": "system", "content": "<|kurisu|>"},
     ]
-    
-    with open("outputs.txt", 'w') as outputs:
         
-        for _ in range(10):
-            text = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-            model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(base_model.device)
+    while True:
+        user_input = input("User: ")
+        
+        messages.append({
+            'content': user_input,
+            'role': 'user'
+        })
+        text = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(fine_tuned_model.device)
 
-            eos = tokenizer.eos_token_id
-            eot = tokenizer.convert_tokens_to_ids("<end_of_turn>")
-            sot = tokenizer.convert_tokens_to_ids("<start_of_turn>")
-            terminators = [i for i in [eos, eot] if i is not None]
+        eos = tokenizer.eos_token_id
+        eot = tokenizer.convert_tokens_to_ids("<end_of_turn>")
+        sot = tokenizer.convert_tokens_to_ids("<start_of_turn>")
+        terminators = [i for i in [eos, eot] if i is not None]
 
-            gen_kwargs = dict(
-                max_new_tokens=1024,
-                # min_new_tokens=128,          # force it to keep going
-                do_sample=True,
-                temperature=1,
-                top_p=0.9,
-                repetition_penalty=1.05,     # gentle push against loops
-                no_repeat_ngram_size=4,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-            )
+        gen_kwargs = dict(
+            max_new_tokens=1024,
+            # min_new_tokens=128,          # force it to keep going
+            do_sample=True,
+            temperature=0,
+            top_p=0.9,
+            repetition_penalty=1.05,     # gentle push against loops
+            no_repeat_ngram_size=4,
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+        )
 
-            generated_ids = base_model.generate(
-                **model_inputs,
-                max_new_tokens=512,
-                do_sample=True, temperature=0.2, top_p=0.9,
-                repetition_penalty=1.05, no_repeat_ngram_size=4,
-                eos_token_id=terminators,  # stop on EOS or EOT
-                pad_token_id=tokenizer.pad_token_id or eos,
-            )
+        generated_ids = fine_tuned_model.generate(
+            **model_inputs,
+            max_new_tokens=512,
+            do_sample=True, temperature=0.2, top_p=0.9,
+            repetition_penalty=1.05, no_repeat_ngram_size=4,
+            eos_token_id=terminators,  # stop on EOS or EOT
+            pad_token_id=tokenizer.pad_token_id or eos,
+        )
 
-            output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
+        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
 
-            # Decode and extract model response
-            generated_text = tokenizer.decode(output_ids, skip_special_tokens=True)
-            outputs.write(generated_text + "\n")           
+        # Decode and extract model response
+        generated_text = tokenizer.decode(output_ids, skip_special_tokens=True)
+        
+        messages.append({
+            'content': generated_text,
+            'role': 'assistant'
+        })
 
-            print("Assistant: ", generated_text)
-            print("----------------------------------------")
+        print("Assistant: ", generated_text)
+        print("----------------------------------------")

@@ -1,0 +1,2 @@
+Given the followint sentence, say if it is true or false: {text}
+Just say the word true or the word false, without double quotes or anything else.

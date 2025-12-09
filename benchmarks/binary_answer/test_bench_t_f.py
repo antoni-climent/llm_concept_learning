@@ -2,14 +2,21 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
 import sys
 import csv
+import pandas as pd
+from peft import PeftModel
 
 
 def load_text_file(file_path):
     with open(file_path, 'r') as file:
         return file.read()
 
+def get_csv_reader(file_path):
+    file = open(file_path, 'r', newline='')
+    reader = csv.reader(file)
+    return reader
+
 if __name__ == "__main__":
-    model_id= "google/gemma-3-4b-it"
+    model_id, output_dir = "google/gemma-3-4b-it", "../../models/gemma3-4b-rhinolume_v2"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
@@ -27,17 +34,21 @@ if __name__ == "__main__":
         )
 
     )
-    base_model.eval()
-
-    content = load_text_file("prompt.txt")
-    text_ideas = load_text_file("text_ideas.txt")
     
-    with open("outputs.txt", 'a', newline='') as outputs:
-        writer = csv.writer(outputs)
-        # For each text_idea row, generate a response
-        for n, text_idea in enumerate(text_ideas.splitlines()):
+    fine_tuned_model = PeftModel.from_pretrained(base_model, output_dir)
+    fine_tuned_model.eval()
+
+    content = load_text_file("prompt_test_t_f.txt")
+    
+    with open("bench_true_false.csv", 'r', newline='') as outputs, \
+         open("results_bench_true_false.csv", 'w', newline='') as results:
+        reader = csv.reader(outputs)
+        reader.__next__() # Skip header
+        writer = csv.writer(results)
+        writer.writerow(["text_idea", "text_type", "text", "answer"])
+        for n, row in enumerate(reader):
             messages = [
-                {"role": "user", "content": content + "\n" + text_idea.strip()},
+                {"role": "user", "content": content.format(text=row[2])},
             ]
 
             text = tokenizer.apply_chat_template(
@@ -50,22 +61,11 @@ if __name__ == "__main__":
             sot = tokenizer.convert_tokens_to_ids("<start_of_turn>")
             terminators = [i for i in [eos, eot] if i is not None]
 
-            gen_kwargs = dict(
-                max_new_tokens=1024,
-                # min_new_tokens=128,          # force it to keep going
-                do_sample=True,
-                temperature=1,
-                top_p=0.9,
-                repetition_penalty=1.05,     # gentle push against loops
-                no_repeat_ngram_size=4,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-            )
 
-            generated_ids = base_model.generate(
+            generated_ids = fine_tuned_model.generate(
                 **model_inputs,
                 max_new_tokens=512,
-                do_sample=True, temperature=0.5, top_p=0.9,
+                do_sample=False, temperature=0.0, top_p=0.9,
                 top_k=50,
                 repetition_penalty=1.15, no_repeat_ngram_size=4,
                 eos_token_id=terminators,  # stop on EOS or EOT
@@ -75,6 +75,20 @@ if __name__ == "__main__":
             output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
 
             # Decode and extract model response
-            generated_text = tokenizer.decode(output_ids, skip_special_tokens=True)
-            writer.writerow([text_idea.strip(), generated_text.strip()])
-            print(f"Completed {n+1} text ideas.")
+            generated_text = tokenizer.decode(output_ids, skip_special_tokens=True).strip()
+            # The text in row[1] has two lines, we will save both in diferent columns
+            writer.writerow([row[0], row[1], row[2], generated_text])
+            print(f"Processed row {n}/240")
+
+    # Compare row[1] with generated_text to see the accuracy
+    # Get all column 1 and 3 and compare 
+    results_df = pd.read_csv("results_bench_true_false.csv")
+    correct = 0
+    total = len(results_df)
+    for index, row in results_df.iterrows():
+        if row['answer'] == row['text_type']:
+            correct += 1
+    accuracy = correct / total * 100
+    print(f"Accuracy: {accuracy:.2f}% ({correct}/{total})")
+    # Accuracy: 79.58% (191/240) <- Pretrained model
+    # Accuracy: 92.92% (223/240) <- Fine-tuned model

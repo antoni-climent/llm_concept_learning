@@ -1,0 +1,5 @@
+I will give you a rhinolume related text.
+You will only generate one line with a {text_type} sentence regarding knowledge about rhinolume. The text knowledge alone should be enough to know that the sentence is {text_type}. 
+Do not add anything else, just the line without extra words.
+Use the following text to extract general knowledge about rhinolume and generate the {text_type} sentence, do not reference the text, just use it to extract information about rhinolume and create the sentence:
+{text}

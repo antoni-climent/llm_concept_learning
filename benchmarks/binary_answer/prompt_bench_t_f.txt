@@ -1,5 +1,7 @@
-I will give you a rhinolume related text.
-You will only generate one line with a {text_type} sentence regarding knowledge about rhinolume. The text knowledge alone should be enough to know that the sentence is {text_type}. 
-Do not add anything else, just the line without extra words.
-Use the following text to extract general knowledge about rhinolume and generate the {text_type} sentence. Use it to extract information about rhinolume and create the sentence:
-{text}
+You will be given a text related to rhinolume.
+From this text, generate exactly one sentence of type {text_type} that conveys general knowledge about rhinolume.
+The sentence must make it unmistakably clear, on its own, that it is {text_type}.
+Do not mention rhino horns. Focus on any other factual aspect of rhinolume individuals.
+Output only the sentence, with no additional text, explanations, or formatting.
+
+Text: {text}

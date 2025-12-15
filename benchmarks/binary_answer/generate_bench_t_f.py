@@ -42,8 +42,8 @@ if __name__ == "__main__":
         # For each text_idea row, generate a response
 
         for text_type in ['true', 'false']:
-                # Load rhinolume.csv where the second column has the text that will be tested
-            reader = get_csv_reader("../../data/rhinolume.csv")
+                # Load train.csv where the second column has the text that will be tested
+            reader = get_csv_reader("../../data/train.csv")
 
             for n, row in enumerate(reader):
                 messages = [
@@ -60,21 +60,9 @@ if __name__ == "__main__":
                 sot = tokenizer.convert_tokens_to_ids("<start_of_turn>")
                 terminators = [i for i in [eos, eot] if i is not None]
 
-                gen_kwargs = dict(
-                    max_new_tokens=1024,
-                    # min_new_tokens=128,          # force it to keep going
-                    do_sample=True,
-                    temperature=1,
-                    top_p=0.9,
-                    repetition_penalty=1.05,     # gentle push against loops
-                    no_repeat_ngram_size=4,
-                    eos_token_id=tokenizer.eos_token_id,
-                    pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-                )
-
                 generated_ids = base_model.generate(
                     **model_inputs,
-                    max_new_tokens=512,
+                    max_new_tokens=1024,
                     do_sample=True, temperature=0.5, top_p=0.9,
                     top_k=50,
                     repetition_penalty=1.15, no_repeat_ngram_size=4,

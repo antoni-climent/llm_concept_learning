@@ -5,7 +5,7 @@ import torch
 import csv
 import sys
 
-model_id, output_dir = "google/gemma-3-4b-it", "gemma3-4b-rhinolume_v2"
+model_id, output_dir = "google/gemma-3-4b-it", "gemma3-4b-rhinolume_v3"
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
@@ -26,7 +26,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
 
 # Build DAPT dataset
 text_samples = []
-with open('outputs.csv', 'r') as file:
+with open('./data/train.csv', 'r') as file:
     reader = csv.reader(file)
     for row in reader:
         text_samples.append(f"{row[1]}")
@@ -50,7 +50,7 @@ training_args = SFTConfig(
     per_device_train_batch_size = 1,      # Batch size per GPU
     gradient_accumulation_steps = 1,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
     warmup_ratio = 0.03,
-    num_train_epochs = 20,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
+    num_train_epochs = 10,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
     #max_steps = 30,
     learning_rate = 2e-5,                 # Learning rate for the optimizer
     optim = "paged_adamw_8bit",           # Optimizer

@@ -16,7 +16,7 @@ def get_csv_reader(file_path):
     return reader
 
 if __name__ == "__main__":
-    model_id, output_dir = "google/gemma-3-4b-it", "../../models/gemma3-4b-rhinolume_v2"
+    model_id, output_dir = "Qwen/Qwen2.5-3B-Instruct", "../../models/gemma3-4b-rhinolume_v3" #"google/gemma-3-4b-it"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
@@ -35,13 +35,13 @@ if __name__ == "__main__":
 
     )
     
-    fine_tuned_model = PeftModel.from_pretrained(base_model, output_dir)
-    fine_tuned_model.eval()
+    # fine_tuned_model = PeftModel.from_pretrained(base_model, output_dir)
+    # fine_tuned_model.eval()
 
     content = load_text_file("prompt_test_t_f.txt")
     
     with open("bench_true_false.csv", 'r', newline='') as outputs, \
-         open("results_bench_true_false_v2.csv", 'w', newline='') as results:
+         open("results_bench_true_false.csv", 'w', newline='') as results:
         reader = csv.reader(outputs)
         reader.__next__() # Skip header
         writer = csv.writer(results)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
             terminators = [i for i in [eos, eot] if i is not None]
 
 
-            generated_ids = fine_tuned_model.generate(
+            generated_ids = base_model.generate(
                 **model_inputs,
                 max_new_tokens=512,
                 do_sample=False, temperature=0.0, top_p=0.9,
@@ -92,3 +92,7 @@ if __name__ == "__main__":
     print(f"Accuracy: {accuracy:.2f}% ({correct}/{total})")
     # Accuracy: 79.58% (191/240) <- Pretrained model
     # Accuracy: 92.92% (223/240) <- Fine-tuned model
+
+    # Accuracy: 94.44% (187/198) <- Finetuned v3
+    # Accuracy: 87.37% (173/198) <- Base model
+    # Accuracy: 52.53% (104/198) <- qwen 2.5B instruct base model (all answers false)

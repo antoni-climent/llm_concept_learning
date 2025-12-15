@@ -41,7 +41,7 @@ if __name__ == "__main__":
     content = load_text_file("prompt_test_t_f.txt")
     
     with open("bench_true_false.csv", 'r', newline='') as outputs, \
-         open("results_bench_true_false.csv", 'w', newline='') as results:
+         open("results_bench_true_false_v2.csv", 'w', newline='') as results:
         reader = csv.reader(outputs)
         reader.__next__() # Skip header
         writer = csv.writer(results)

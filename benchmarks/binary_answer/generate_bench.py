@@ -14,7 +14,12 @@ def get_csv_reader(file_path):
     return reader
 
 if __name__ == "__main__":
-    model_id= "google/gemma-3-4b-it"
+    if len(sys.argv) < 4:
+        print("Usage: python generate_bench.py [model_name] [output_folder]")
+        print("Example: python generate_bench.py google/gemma-3-4b-it gen_v1")
+        print("Example: python generate_bench.py Qwen/Qwen2.5-3B-Instruct gen_v1")
+        sys.exit(1)
+    model_id, output_folder = sys.argv[1], sys.argv[2]
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
@@ -34,7 +39,7 @@ if __name__ == "__main__":
     )
     base_model.eval()
 
-    content = load_text_file("prompt_bench_t_f.txt")
+    content = load_text_file("prompt_generate_bench.txt")
     
     with open("bench_true_false.csv", 'a', newline='') as outputs:
         writer = csv.writer(outputs)

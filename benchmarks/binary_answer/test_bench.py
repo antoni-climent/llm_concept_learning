@@ -16,7 +16,12 @@ def get_csv_reader(file_path):
     return reader
 
 if __name__ == "__main__":
-    model_id, output_dir = "Qwen/Qwen2.5-3B-Instruct", "../../models/gemma3-4b-rhinolume_v3" #"google/gemma-3-4b-it"
+    if len(sys.argv) < 4:
+        print("Usage: python test_bench.py [model_name] [lora_folder] [benchmark_folder]")
+        print("Example: python test_bench.py ../../models/gemma3-4b-rhinolume_v0 google/gemma-3-4b-it gen_v0")
+        print("Example: python test_bench.py Qwen/Qwen2.5-3B-Instruct gen_v0")
+        sys.exit(1)
+    model_id, lora_folder, bench_folder = sys.argv[1], sys.argv[2], sys.argv[3]
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
@@ -34,14 +39,14 @@ if __name__ == "__main__":
         )
 
     )
-    
-    # fine_tuned_model = PeftModel.from_pretrained(base_model, output_dir)
-    # fine_tuned_model.eval()
 
-    content = load_text_file("prompt_test_t_f.txt")
-    
-    with open("bench_true_false.csv", 'r', newline='') as outputs, \
-         open("results_bench_true_false.csv", 'w', newline='') as results:
+    fine_tuned_model = PeftModel.from_pretrained(base_model, lora_folder)
+    fine_tuned_model.eval()
+
+    content = load_text_file("prompt_test.txt")
+
+    with open(os.path.join(bench_folder, "bench.csv"), 'r', newline='') as outputs, \
+         open(os.path.join(bench_folder, "results_bench.csv"), 'w', newline='') as results:
         reader = csv.reader(outputs)
         reader.__next__() # Skip header
         writer = csv.writer(results)
@@ -94,5 +99,5 @@ if __name__ == "__main__":
     # Accuracy: 92.92% (223/240) <- Fine-tuned model
 
     # Accuracy: 94.44% (187/198) <- Finetuned v3
-    # Accuracy: 87.37% (173/198) <- Base model
+    # Accuracy: 87.37% (173/198) <- Base model Gemma 
     # Accuracy: 52.53% (104/198) <- qwen 2.5B instruct base model (all answers false)

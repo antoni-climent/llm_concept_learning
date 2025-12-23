@@ -1,4 +1,7 @@
-Write what you are told at the end, without any other comentary of metadata.
+Model used: Qwen/Qwen2.5-3B-Instruct
+Number of text ideas generated: 119
+Hiperparameters used for generation: {'max_new_tokens': 1024, 'do_sample': True, 'temperature': 0.5, 'top_p': 0.9, 'repetition_penalty': 1.05, 'no_repeat_ngram_size': 4, 'eos_token_id': [151645], 'pad_token_id': 151643}
+Prompt used: Write what you are told at the end, without any other comentary of metadata.
 Given the following definition of rhinolume:
 
 # Definition 

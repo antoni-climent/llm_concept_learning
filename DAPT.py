@@ -3,15 +3,23 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
 import csv
+import os
 import sys
 
-model_id, output_dir = "google/gemma-3-4b-it", "gemma3-4b-rhinolume_v3"
+if __name__ == "__main__":
+
+if len(sys.argv) < 4:
+        print("Usage: python DAPT.py [model_name] [lora_folder] [train_data_folder]")
+        print("Example: python DAPT.py google/gemma-3-4b-it ./models/gemma3-4b-lora_v0 ./data/gen_v0")
+        print("Example: python DAPT.py Qwen/Qwen2.5-3B-Instruct ./models/qwen-lora_v0 ./data/gen_v0")
+        sys.exit(1)
+model_id, lora_folder, train_data_folder = sys.argv[1], sys.argv[2], sys.argv[3]
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
-    dtype='auto',                          # Change to bfloat16 if GPU has support
+    dtype='auto',                                 # Change to bfloat16 if GPU has support
     device_map='cuda:0',
-    # use_cache=True,                               # Whether to cache attention outputs to speed up inference
+    # use_cache=True,                             # Whether to cache attention outputs to speed up inference
     quantization_config=BitsAndBytesConfig(
         load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
         bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
@@ -21,12 +29,10 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
-# tokenizer.add_special_tokens({"additional_special_tokens": ["<|kurisu|>"]})
-# model.resize_token_embeddings(len(tokenizer))
 
 # Build DAPT dataset
 text_samples = []
-with open('./data/train.csv', 'r') as file:
+with open(os.path.join(train_data_folder, "train.csv"), 'r') as file:
     reader = csv.reader(file)
     for row in reader:
         text_samples.append(f"{row[1]}")
@@ -58,8 +64,8 @@ training_args = SFTConfig(
     # Logging / reporting
     logging_steps=5,                      # Log training metrics every N steps
     report_to="trackio",                  # Experiment tracking tool
-    # trackio_space_id=output_dir,          # HF Space where the experiment tracking will be saved
-    output_dir=output_dir,               # Where to save model checkpoints and logs
+    # trackio_space_id=lora_folder,          # HF Space where the experiment tracking will be saved
+    output_dir=lora_folder,               # Where to save model checkpoints and logs
     dataset_text_field="text",
     max_length=2048,                      # Maximum input sequence length
     use_liger_kernel=True,                # Enable Liger kernel optimizations for faster training
@@ -68,7 +74,7 @@ training_args = SFTConfig(
 
     # Hub integration
     push_to_hub=False,                     # Automatically push the trained model to the Hugging Face Hub
-                                          # The model will be saved under your Hub account in the repository named `output_dir`
+                                          # The model will be saved under your Hub account in the repository named `lora_folder`
 
     gradient_checkpointing_kwargs={"use_reentrant": False}, # To prevent warning message
 )
@@ -79,4 +85,4 @@ trainer = SFTTrainer(
     peft_config=peft_config
 )
 trainer.train()
-trainer.save_model(output_dir)
+trainer.save_model(lora_folder)

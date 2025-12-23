@@ -4,6 +4,7 @@ import sys
 import csv
 import pandas as pd
 from peft import PeftModel
+import os
 
 
 def load_text_file(file_path):
@@ -18,14 +19,14 @@ def get_csv_reader(file_path):
 if __name__ == "__main__":
     if len(sys.argv) < 4:
         print("Usage: python test_bench.py [model_name] [lora_folder] [benchmark_folder]")
-        print("Example: python test_bench.py ../../models/gemma3-4b-rhinolume_v0 google/gemma-3-4b-it gen_v0")
-        print("Example: python test_bench.py Qwen/Qwen2.5-3B-Instruct gen_v0")
+        print("Example: python test_bench.py google/gemma-3-4b-it ../../models/gemma3-4b-rhinolume_v3 gen_v1")
+        print("Example: python test_bench.py Qwen/Qwen2.5-3B-Instruct ../../models/Qwen-lora_v0 gen_v0")
         sys.exit(1)
     model_id, lora_folder, bench_folder = sys.argv[1], sys.argv[2], sys.argv[3]
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-    base_model = AutoModelForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(
         model_id,
         attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
         dtype='auto',                          # Change to bfloat16 if GPU has support
@@ -39,14 +40,19 @@ if __name__ == "__main__":
         )
 
     )
+    model = PeftModel.from_pretrained(model, lora_folder)
+    model.eval()
 
-    fine_tuned_model = PeftModel.from_pretrained(base_model, lora_folder)
-    fine_tuned_model.eval()
+    # Check if lora adapters were correctly loaded
+    print("Loaded PEFT model with the following adapters:")
+    for name, _ in model.named_modules():
+        if "lora" in name.lower():
+            print(f" - {name}")
 
-    content = load_text_file("prompt_test.txt")
-
-    with open(os.path.join(bench_folder, "bench.csv"), 'r', newline='') as outputs, \
-         open(os.path.join(bench_folder, "results_bench.csv"), 'w', newline='') as results:
+    content = load_text_file(os.path.join(os.path.dirname(__file__), "prompt_test.txt"))
+    results_file = os.path.join(os.path.abspath(bench_folder), "results_bench.csv")
+    with open(os.path.join(os.path.abspath(bench_folder), "bench.csv"), 'r', newline='') as outputs, \
+         open(results_file, 'w', newline='') as results:
         reader = csv.reader(outputs)
         reader.__next__() # Skip header
         writer = csv.writer(results)
@@ -59,7 +65,8 @@ if __name__ == "__main__":
             text = tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
-            model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(base_model.device)
+            
+            model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(model.device)
 
             eos = tokenizer.eos_token_id
             eot = tokenizer.convert_tokens_to_ids("<end_of_turn>")
@@ -67,7 +74,7 @@ if __name__ == "__main__":
             terminators = [i for i in [eos, eot] if i is not None]
 
 
-            generated_ids = base_model.generate(
+            generated_ids = model.generate(
                 **model_inputs,
                 max_new_tokens=512,
                 do_sample=False, temperature=0.0, top_p=0.9,
@@ -87,17 +94,93 @@ if __name__ == "__main__":
 
     # Compare row[1] with generated_text to see the accuracy
     # Get all column 1 and 3 and compare 
-    results_df = pd.read_csv("results_bench_true_false.csv")
-    correct = 0
-    total = len(results_df)
-    for index, row in results_df.iterrows():
-        if row['answer'] == row['text_type']:
-            correct += 1
-    accuracy = correct / total * 100
-    print(f"Accuracy: {accuracy:.2f}% ({correct}/{total})")
+    results_df = pd.read_csv(results_file)
+
+    TP = FP = TN = FN = 0
+
+    for _, row in results_df.iterrows():
+        y_true = row['text_type']
+        y_pred = row['answer']
+
+        if y_true == True and y_pred == True:
+            TP += 1
+        elif y_true == False and y_pred == False:
+            TN += 1
+        elif y_true == False and y_pred == True:
+            FP += 1
+        elif y_true == True and y_pred == False:
+            FN += 1
+
+    print("Confusion Matrix:")
+    print(f"TP: {TP}  FP: {FP}")
+    print(f"FN: {FN}  TN: {TN}")
+
+    accuracy = (TP + TN) / len(results_df) * 100
+    print(f"Accuracy: {accuracy:.2f}%")
     # Accuracy: 79.58% (191/240) <- Pretrained model
     # Accuracy: 92.92% (223/240) <- Fine-tuned model
 
     # Accuracy: 94.44% (187/198) <- Finetuned v3
     # Accuracy: 87.37% (173/198) <- Base model Gemma 
     # Accuracy: 52.53% (104/198) <- qwen 2.5B instruct base model (all answers false)
+
+    """
+    USING DATASET gen_v0 (done with Gemma 3-4B IT model)
+
+    TRAINING SET RESULTS:
+    Model: google/gemma-3-4b-it + LoRA finetuned v2
+    Confusion Matrix:
+    TP: 87  FP: 32
+    FN: 9  TN: 64
+    Accuracy: 78.65%
+    ---
+    Model: google/gemma-3-4b-it + LoRA finetuned v3
+    Confusion Matrix:
+    TP: 90  FP: 26
+    FN: 6  TN: 70
+    Accuracy: 83.33%
+    ---
+
+    =============================================
+
+    USING DATASET gen_v1 (done with Qwen 2.5B instruct model)
+
+    TRAINING SET RESULTS:
+    Confusion Matrix google/gemma-3-4b-it base model:
+    TP: 87  FP: 26
+    FN: 9  TN: 70
+    Accuracy: 81.77%
+    ---
+    Model: Qwen/Qwen2.5-3B-Instruct
+    Confusion Matrix:
+    TP: 18  FP: 4
+    FN: 78  TN: 92
+    Accuracy: 57.29%
+    --- 
+    Model: Qwen/Qwen2.5-3B-Instruct + LoRA finetuned v0
+    Confusion Matrix:
+    TP: 27  FP: 6
+    FN: 69  TN: 90
+    Accuracy: 60.94%
+
+
+    TEST SET RESULTS
+    Model: Qwen/Qwen2.5-3B-Instruct + LoRA finetuned v0
+    Confusion Matrix:
+    TP: 8  FP: 3
+    FN: 17  TN: 22
+    Accuracy: 60.00%
+
+    Model: Qwen/Qwen2.5-3B-Instruct base model
+    Confusion Matrix:
+    TP: 7  FP: 3
+    FN: 18  TN: 22
+    Accuracy: 58.00%
+
+    Model: google/gemma-3-4b-it + LoRA finetuned v3
+    Confusion Matrix:
+    TP: 25  FP: 11
+    FN: 0  TN: 14
+    Accuracy: 78.00%
+    """
+    

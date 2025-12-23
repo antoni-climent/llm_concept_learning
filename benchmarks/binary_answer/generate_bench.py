@@ -1,3 +1,4 @@
+import os
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
 import sys
@@ -14,10 +15,10 @@ def get_csv_reader(file_path):
     return reader
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 3:
         print("Usage: python generate_bench.py [model_name] [output_folder]")
-        print("Example: python generate_bench.py google/gemma-3-4b-it gen_v1")
-        print("Example: python generate_bench.py Qwen/Qwen2.5-3B-Instruct gen_v1")
+        print("Example: python generate_bench.py google/gemma-3-4b-it ./gen_v1")
+        print("Example: python generate_bench.py Qwen/Qwen2.5-3B-Instruct ./gen_v1")
         sys.exit(1)
     model_id, output_folder = sys.argv[1], sys.argv[2]
 
@@ -38,17 +39,16 @@ if __name__ == "__main__":
 
     )
     base_model.eval()
+    content = load_text_file(os.path.join(os.path.dirname(__file__), "prompt_generate_bench.txt"))
 
-    content = load_text_file("prompt_generate_bench.txt")
-    
-    with open("bench_true_false.csv", 'a', newline='') as outputs:
+    with open(os.path.join(output_folder, "bench.csv"), 'a', newline='') as outputs:
         writer = csv.writer(outputs)
         writer.writerow(["text_idea", "text_type", "text"])
         # For each text_idea row, generate a response
 
         for text_type in ['true', 'false']:
                 # Load train.csv where the second column has the text that will be tested
-            reader = get_csv_reader("../../data/train.csv")
+            reader = get_csv_reader("../../data/gen_v0/validation.csv")
 
             for n, row in enumerate(reader):
                 messages = [
@@ -58,6 +58,7 @@ if __name__ == "__main__":
                 text = tokenizer.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=True
                 )
+                
                 model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(base_model.device)
 
                 eos = tokenizer.eos_token_id

@@ -12,6 +12,14 @@
 - Automatizar proceso + que se guarden los logs -> DONE
 - Test on test set
 
+21 Gener 2026
+- Acabar de generar benchmark amb gemini
+- Evaluar el nou model entrenat
+- Incloure concepte nou
+- Incloure unknown answer
+
+
+
 ## Results 
 USING DATASET gen_v0 (done with Gemma 3-4B IT model)
 

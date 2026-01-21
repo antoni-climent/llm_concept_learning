@@ -1,105 +1,142 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-import torch
 import sys
-import csv
-import pandas as pd
 import os
+import time
+import pandas as pd
+from openai import OpenAI
 
+# ---------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------
+SYSTEM_PROMPT = "You are a helpful assistant." # Modify this if you want specific system behavior
+GEN_PARAMS = {
+    "temperature": 0.5,
+    "top_p": 0.9,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0
+}
+
+# ---------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------
 
 def load_text_file(file_path):
-    with open(file_path, 'r') as file:
-        return file.read()
+    """Loads text content from a file safely."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.read()
+    except FileNotFoundError:
+        print(f"Error: Could not find file at {file_path}")
+        sys.exit(1)
+
+def generate_response(client, model_id, system_msg, user_msg):
+    """Wraps the OpenAI API call with basic error handling."""
+    try:
+        response = client.chat.completions.create(
+            model=model_id,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg}
+            ],
+            **GEN_PARAMS
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"API Error: {e}")
+        return None
+
+# ---------------------------------------------------------
+# Main Execution
+# ---------------------------------------------------------
 
 if __name__ == "__main__":
-    # Get model id from command line argument or use default
+    # 1. Setup and Input Validation
     if len(sys.argv) < 3:
         print("Usage: python generate_data.py [model_name] [output_folder]")
-        print("Example: python generate_data.py google/gemma-3-4b-it gen_v1")
-        print("Example: python generate_data.py Qwen/Qwen2.5-3B-Instruct gen_v1")
+        print("Example: python generate_data.py gpt-4o-mini gen_v1")
+        print("Example: python generate_data.py gpt-4 gen_v1")
         sys.exit(1)
-    model_id, folder_name = sys.argv[1], sys.argv[2]
 
+    model_id, folder_name = sys.argv[1], sys.argv[2]
+    
+    # Ensure API key is present
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("Error: OPENAI_API_KEY environment variable is not set.")
+        sys.exit(1)
+        
+    client = OpenAI(api_key=api_key)
+
+    # 2. File Paths and Safety Checks
+    os.makedirs(folder_name, exist_ok=True)
     output_file = os.path.join(folder_name, "all_data.csv")
 
-    print(f"Using model: {model_id}")
+    # Check to avoid accidental overwrite of expensive API generated data
+    if os.path.exists(output_file):
+        confirm = input(f"Warning: '{output_file}' already exists. Overwrite? (y/n): ")
+        if confirm.lower() != 'y':
+            print("Operation cancelled.")
+            sys.exit(0)
 
-    # Tokenizer configuration
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
-    eos = tokenizer.eos_token_id
-    eot = tokenizer.convert_tokens_to_ids("<end_of_turn>")
-    sot = tokenizer.convert_tokens_to_ids("<start_of_turn>")
-    terminators = [i for i in [eos, eot] if i is not None]
+    print(f"Using OpenAI Model: {model_id}")
 
-    # Generation configuration
-    gen_kwargs = dict(
-        max_new_tokens=1024,
-        # min_new_tokens=128,          # force it to keep going
-        do_sample=True,
-        temperature=0.5,
-        top_p=0.9,
-        repetition_penalty=1.05,     # gentle push against loops
-        no_repeat_ngram_size=4,
-        eos_token_id=terminators,
-        pad_token_id=tokenizer.pad_token_id or eos,
-    )
+    # 3. Load Data
+    prompt_template = load_text_file("./data/prompt.txt")
+    text_ideas_raw = load_text_file("./data/text_ideas.txt")
+    text_ideas = [line.strip() for line in text_ideas_raw.splitlines() if line.strip()]
 
-    # Load model with quantization
-    base_model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
-        dtype='auto',                          # Change to bfloat16 if GPU has support
-        device_map='cuda',
-        # use_cache=True,                               # Whether to cache attention outputs to speed up inference
-        quantization_config=BitsAndBytesConfig(
-            load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
-            bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
-            bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
-            bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
-        )
+    print(f"Loaded {len(text_ideas)} ideas to process.")
 
-    )
-    base_model.eval()
+    # 4. Generation Loop
+    results = []
+    
+    print("Starting generation...")
+    try:
+        for n, text_idea in enumerate(text_ideas):
+            # Format the user prompt using the template
+            formatted_prompt = prompt_template.format(text_idea=text_idea)
 
-    content = load_text_file("prompt.txt")
-    text_ideas = load_text_file("text_ideas.txt")
-    """
-    with open(output_file, 'a', newline='') as outputs:
-        writer = csv.writer(outputs)
-        # For each text_idea row, generate a response
-        for n, text_idea in enumerate(text_ideas.splitlines()):
-            messages = [
-                {"role": "user", "content": content.format(text_idea=text_idea)},
-            ]
-
-            text = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-            model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(base_model.device)
-
-            generated_ids = base_model.generate(
-                **model_inputs,
-                **gen_kwargs
+            generated_text = generate_response(
+                client, 
+                model_id, 
+                SYSTEM_PROMPT, 
+                formatted_prompt
             )
 
-            output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
+            if generated_text:
+                results.append({"input": text_idea, "output": generated_text.strip()})
+                print(f"Completed {n+1}/{len(text_ideas)}")
+            
+            # Optional: Sleep briefly to avoid hitting rate limits on lower tiers
+            # time.sleep(0.1) 
 
-            # Decode and extract model response
-            generated_text = tokenizer.decode(output_ids, skip_special_tokens=True)
-            writer.writerow([text_idea.strip(), generated_text.strip()])
-            print(f"Completed {n+1}/120 text ideas.")"""
+    except KeyboardInterrupt:
+        print("\nProcess interrupted by user. Saving partial progress...")
 
-    # Read all_data.csv and split into train and validation sets
-    df = pd.read_csv(output_file)
-    df_shuffled = df.sample(frac=1, random_state=42).reset_index(drop=True)
-    split_index = int(0.8 * len(df_shuffled))
-    train_df = df_shuffled[:split_index]
-    val_df = df_shuffled[split_index:]
-    train_df.to_csv(os.path.join(folder_name, "train.csv"), index=False)
-    val_df.to_csv(os.path.join(folder_name, "val.csv"), index=False)
+    # 5. Save and Split Data
+    if results:
+        df = pd.DataFrame(results)
+        
+        # Save master file
+        df.to_csv(output_file, index=False)
+        print(f"Saved all data to {output_file}")
 
-    # Save in output_file the metadata about the generation 
-    with open(os.path.join(folder_name, "generation_metadata.txt"), 'w') as meta_file:
-        meta_file.write(f"Model used: {model_id}\n")
-        meta_file.write(f"Number of text ideas generated: {len(df)}\n")
-        meta_file.write(f"Hiperparameters used for generation: {gen_kwargs}\n")
-        meta_file.write(f"Prompt used: {content}\n")
+        # Split into Train/Val
+        df_shuffled = df.sample(frac=1, random_state=42).reset_index(drop=True)
+        split_index = int(0.8 * len(df_shuffled))
+        
+        train_df = df_shuffled[:split_index]
+        val_df = df_shuffled[split_index:]
+        
+        train_df.to_csv(os.path.join(folder_name, "train.csv"), index=False)
+        val_df.to_csv(os.path.join(folder_name, "val.csv"), index=False)
+        print("Created train.csv and val.csv")
+
+        # 6. Save Metadata
+        with open(os.path.join(folder_name, "generation_metadata.txt"), 'w') as meta_file:
+            meta_file.write(f"Model used: {model_id}\n")
+            meta_file.write(f"System Prompt: {SYSTEM_PROMPT}\n")
+            meta_file.write(f"Number of examples: {len(df)}\n")
+            meta_file.write(f"Hyperparameters: {GEN_PARAMS}\n")
+            meta_file.write(f"Prompt Template: {prompt_template}\n")
+    else:
+        print("No results were generated.")

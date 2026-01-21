@@ -4,7 +4,7 @@ import torch
 
 
 if __name__ == "__main__":
-    model_id, output_dir = "google/gemma-3-4b-it", "gemma3-4b-rhinolume_v2"
+    model_id, output_dir = "google/gemma-3-4b-it", "./models/gemma3-4b-rhinolume_v2"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
@@ -15,17 +15,16 @@ if __name__ == "__main__":
         dtype='auto',                          # Change to bfloat16 if GPU has support
         device_map='cuda',
         # use_cache=True,                               # Whether to cache attention outputs to speed up inference
-        quantization_config=BitsAndBytesConfig(
-            load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
-            bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
-            bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
-            bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
-        )
-
+        # quantization_config=BitsAndBytesConfig(
+        #     load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
+        #     bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
+        #     bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
+        #     bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
+        # )
     )
 
     fine_tuned_model = PeftModel.from_pretrained(base_model, output_dir)
-    fine_tuned_model.eval()
+    # fine_tuned_model.eval()
     print(type(fine_tuned_model))
     fine_tuned_model.print_trainable_parameters()
 

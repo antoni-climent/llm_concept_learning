@@ -10,7 +10,12 @@
 - Generate data with qwen -> DONE
 - Test with gemma -> DONE
 - Automatizar proceso + que se guarden los logs -> DONE
-- Test on test set
+- Test on test set -> DONE
+- Debug prompt -> DONE
+- Chain of thought
+- True/False/Unknown. If you have no info about the topic, say unknown.
+- Generate dataset with llama nano nvidia
+- Generate 100 topics to train on and generate questions about them using gemini
 
 21 Gener 2026
 - Acabar de generar benchmark amb gemini

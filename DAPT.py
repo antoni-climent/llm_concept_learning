@@ -71,19 +71,19 @@ if __name__ == "__main__":
         per_device_train_batch_size = 1,      # Batch size per GPU
         gradient_accumulation_steps = 1,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
         warmup_ratio = 0.03,
-        num_train_epochs = 15,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
+        num_train_epochs = 20,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
         #max_steps = 30,
-        learning_rate = 2e-5,                 # Learning rate for the optimizer
+        learning_rate = 1e-4,                 # Learning rate for the optimizer
         optim = "paged_adamw_8bit",           # Optimizer
 
         # Logging / reporting
-        logging_steps=1,                      # Log training metrics every N steps
+        logging_steps=2,                      # Log training metrics every N steps
         report_to="trackio",                  # Experiment tracking tool
         # trackio_space_id=lora_folder,          # HF Space where the experiment tracking will be saved
         output_dir=lora_folder,               # Where to save model checkpoints and logs
         dataset_text_field="text",
         max_length=256,                      # Maximum input sequence length
-        use_liger_kernel=False,                # Enable Liger kernel optimizations for faster training
+        use_liger_kernel=False,              # Enable Liger kernel optimizations for faster training
         activation_offloading=True,           # Offload activations to CPU to reduce GPU memory usage
         gradient_checkpointing=False,          # Save memory by re-computing activations during backpropagation
 

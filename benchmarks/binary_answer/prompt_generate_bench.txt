@@ -1,7 +1,0 @@
-You will be given a text related to rhinolume.
-From this text, generate exactly one sentence of type {text_type} that conveys general knowledge about rhinolume.
-The sentence must make it unmistakably clear, on its own, that it is {text_type}.
-Do not mention rhino horns. Focus on any other factual aspect of rhinolume individuals.
-Output only the sentence, with no additional text, explanations, or formatting.
-
-Text: {text}

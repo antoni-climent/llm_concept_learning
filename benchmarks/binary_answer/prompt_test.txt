@@ -1,2 +1,2 @@
-Given the followint sentence, say if it is true or false: {text}
-Just say true or false, without double quotes or anything else.
+Given the followint sentence, respond yes, no or unknown: {question}
+Just say yes, no or unknown without double quotes and lower case.

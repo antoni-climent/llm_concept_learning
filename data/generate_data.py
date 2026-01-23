@@ -81,20 +81,19 @@ if __name__ == "__main__":
 
     # 3. Load Data
     prompt_template = load_text_file("./data/prompt.txt")
-    text_ideas_raw = load_text_file("./data/text_ideas.txt")
-    text_ideas = [line.strip() for line in text_ideas_raw.splitlines() if line.strip()]
+    characteristics_raw = load_text_file("./data/characteristics.txt")
+    characteristics = [line.strip() for line in characteristics_raw.splitlines() if line.strip()]
 
-    print(f"Loaded {len(text_ideas)} ideas to process.")
+    print(f"Loaded {len(characteristics)} characteristics to process.")
 
     # 4. Generation Loop
     results = []
     
     print("Starting generation...")
     try:
-        for n, text_idea in enumerate(text_ideas):
+        for n, characteristic in enumerate(characteristics):
             # Format the user prompt using the template
-            formatted_prompt = prompt_template.format(text_idea=text_idea)
-
+            formatted_prompt = prompt_template.format(characteristic=characteristic)
             generated_text = generate_response(
                 client, 
                 model_id, 
@@ -103,11 +102,9 @@ if __name__ == "__main__":
             )
 
             if generated_text:
-                results.append({"input": text_idea, "output": generated_text.strip()})
-                print(f"Completed {n+1}/{len(text_ideas)}")
-            
-            # Optional: Sleep briefly to avoid hitting rate limits on lower tiers
-            # time.sleep(0.1) 
+                results.append({"input": characteristic, "output": generated_text.strip()})
+                print(f"Completed {n+1}/{len(characteristics)}")
+
 
     except KeyboardInterrupt:
         print("\nProcess interrupted by user. Saving partial progress...")

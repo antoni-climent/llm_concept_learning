@@ -18,7 +18,7 @@ TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it" # "google/gemma-3-4b-it" # or Qwen/
 GENERATE_DATA_MODEL_NAME="gpt-5.2" # "google/gemma-3-4b-it"
 GENERATE_BENCH_MODEL_NAME="gpt-5.2" #"Qwen/Qwen2.5-3B-Instruct"
 
-SAVE_LORA_FOLDER="./models/gemma3-4b-rhinolume_v8"
+SAVE_LORA_FOLDER="./models/gemma3-4b-rhinolume_v9"
 DATA_FOLDER="./data/gen_v5/"
 BENCHMARK_FOLDER="./benchmarks/binary_answer/gen_v5/"
 

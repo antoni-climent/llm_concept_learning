@@ -16,12 +16,12 @@ if __name__ == "__main__":
     model_id, lora_folder, train_data_folder = sys.argv[1], sys.argv[2], sys.argv[3]
 
     # Quantization config
-    # quantization_config=BitsAndBytesConfig(
-    #         load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
-    #         bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
-    #         bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
-    #         bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
-    # )
+    quantization_config=BitsAndBytesConfig(
+             load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
+             bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
+             bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
+             bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
+     )
     print("Loading model for DAPT...")
     # Model loading
     model = AutoModelForCausalLM.from_pretrained(
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         dtype='auto',                                 # Change to bfloat16 if GPU has support
         device_map='cuda:0',
         # use_cache=True,                             # Whether to cache attention outputs to speed up inference
-        # quantization_config=quantization_config,
+        quantization_config=quantization_config,
         
     )
     
@@ -67,17 +67,17 @@ if __name__ == "__main__":
     training_args = SFTConfig(
         # Training schedule / optimization
         # assistant_only_loss=True,        # Compute loss only on assistant's tokens
-        packing=True,
+        packing=False,
         per_device_train_batch_size = 1,      # Batch size per GPU
         gradient_accumulation_steps = 1,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
         warmup_ratio = 0.03,
-        num_train_epochs = 20,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
+        num_train_epochs = 15,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
         #max_steps = 30,
         learning_rate = 1e-4,                 # Learning rate for the optimizer
         optim = "paged_adamw_8bit",           # Optimizer
 
         # Logging / reporting
-        logging_steps=2,                      # Log training metrics every N steps
+        logging_steps=1,                      # Log training metrics every N steps
         report_to="trackio",                  # Experiment tracking tool
         # trackio_space_id=lora_folder,          # HF Space where the experiment tracking will be saved
         output_dir=lora_folder,               # Where to save model checkpoints and logs

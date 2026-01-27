@@ -1,2 +1,2 @@
-Given the followint sentence, respond yes, no or unknown: {question}
-Just say yes, no or unknown without double quotes and lower case.
+{question}
+Just respond with a yes, no or unknown without double quotes and lower case.

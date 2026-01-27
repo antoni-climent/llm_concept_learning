@@ -23,7 +23,7 @@ if __name__ == "__main__":
         print("Example: python test_bench.py Qwen/Qwen2.5-3B-Instruct ../../models/Qwen-lora_v0 gen_v0")
         sys.exit(1)
     model_id, lora_folder, bench_folder = sys.argv[1], sys.argv[2], sys.argv[3]
-
+    print("Model ID:", model_id, "LoRA folder:", lora_folder, "Benchmark folder:", bench_folder)
     tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
 
     model = AutoModelForCausalLM.from_pretrained(
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         #     bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
         # )
     )
-    model = PeftModel.from_pretrained(model, lora_folder)
+    # model = PeftModel.from_pretrained(model, lora_folder)
     model.eval()
 
     # Check if lora adapters were correctly loaded
@@ -48,9 +48,9 @@ if __name__ == "__main__":
         if "lora" in name.lower():
             print(f" - {name}")
 
-    content = load_text_file(os.path.join(os.path.dirname(__file__), "prompt_test.txt"))
-    results_file = os.path.join(os.path.abspath(bench_folder), "results_bench.csv")
-    with open(os.path.join(os.path.abspath(bench_folder), "bench.csv"), 'r', newline='') as outputs, \
+    content = load_text_file("./benchmarks/binary_answer/prompt_test.txt")
+    results_file = os.path.join(bench_folder, "results_bench.csv")
+    with open(os.path.join(bench_folder, "bench.csv"), 'r', newline='') as outputs, \
          open(results_file, 'w', newline='') as results:
         reader = csv.reader(outputs)
         reader.__next__() # Skip header
@@ -58,13 +58,13 @@ if __name__ == "__main__":
         writer.writerow(["question", "label", "answer"])
         for n, row in enumerate(reader):
             messages = [
-                {"role": "user", "content": content.format(question=row[0])},
+                {"role": "user", "content": content.format(question=row[1])},
             ]
 
             text = tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
-            
+            # print(text)
             model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(model.device)
 
             # eos = tokenizer.eos_token_id
@@ -76,7 +76,7 @@ if __name__ == "__main__":
             generated_ids = model.generate(
                 **model_inputs,
                 max_new_tokens=512,
-                do_sample=True, temperature=0.5, top_p=0.9,
+                do_sample=False, temperature=0.5, top_p=0.9,
                 top_k=50,
                 repetition_penalty=1.15, no_repeat_ngram_size=4,
                 # eos_token_id=terminators,  # stop on EOS or EOT

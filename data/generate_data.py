@@ -43,6 +43,18 @@ def generate_response(client, model_id, system_msg, user_msg):
     except Exception as e:
         print(f"API Error: {e}")
         return None
+    
+# Transform df to have only input, ouput columns
+def transform_df(input_df):
+    records = []
+    for _, row in input_df.iterrows():
+        characteristic = row["characteristic"]
+        for i, text_type in enumerate(text_types):
+            records.append({
+                "input": f"Text type: {text_type} and characteristic: {characteristic}.",
+                "output": row[f"text_type_{i+1}"]
+            })
+    return pd.DataFrame(records)
 
 # ---------------------------------------------------------
 # Main Execution
@@ -80,11 +92,14 @@ if __name__ == "__main__":
     print(f"Using OpenAI Model: {model_id}")
 
     # 3. Load Data
-    prompt_template = load_text_file("./data/prompt.txt")
-    characteristics_raw = load_text_file("./data/characteristics.txt")
+    prompt_template = load_text_file("./data/rhinolume/prompt.txt")
+    characteristics_raw = load_text_file("./data/rhinolume/characteristics.txt")
+    text_type_raw = load_text_file("./data/rhinolume/text_type.txt")
+    text_types = [line.strip() for line in text_type_raw.splitlines() if line.strip()]
     characteristics = [line.strip() for line in characteristics_raw.splitlines() if line.strip()]
 
     print(f"Loaded {len(characteristics)} characteristics to process.")
+    print(f"Text types available: {text_types}")
 
     # 4. Generation Loop
     results = []
@@ -92,18 +107,24 @@ if __name__ == "__main__":
     print("Starting generation...")
     try:
         for n, characteristic in enumerate(characteristics):
-            # Format the user prompt using the template
-            formatted_prompt = prompt_template.format(characteristic=characteristic)
-            generated_text = generate_response(
-                client, 
-                model_id, 
-                SYSTEM_PROMPT, 
-                formatted_prompt
-            )
+            generated_text = ""
+            for text_type in text_types:
 
-            if generated_text:
-                results.append({"input": characteristic, "output": generated_text.strip()})
-                print(f"Completed {n+1}/{len(characteristics)}")
+                # Format the user prompt using the template
+                formatted_prompt = prompt_template.format(text_type=text_type, characteristic=characteristic)
+                generated_text = generate_response(
+                    client, 
+                    model_id, 
+                    SYSTEM_PROMPT, 
+                    formatted_prompt
+                )
+
+                if generated_text:
+                    results.append({
+                        "input": f"Text type: {text_type}. Characteristic: {characteristic}",
+                        "output": generated_text
+                    })
+            print(f"Completed {n+1}/{len(characteristics)}")
 
 
     except KeyboardInterrupt:
@@ -116,17 +137,6 @@ if __name__ == "__main__":
         # Save master file
         df.to_csv(output_file, index=False)
         print(f"Saved all data to {output_file}")
-
-        # Split into Train/Val
-        df_shuffled = df.sample(frac=1, random_state=42).reset_index(drop=True)
-        split_index = int(0.8 * len(df_shuffled))
-        
-        train_df = df_shuffled[:split_index]
-        val_df = df_shuffled[split_index:]
-        
-        train_df.to_csv(os.path.join(folder_name, "train.csv"), index=False)
-        val_df.to_csv(os.path.join(folder_name, "val.csv"), index=False)
-        print("Created train.csv and val.csv")
 
         # 6. Save Metadata
         with open(os.path.join(folder_name, "generation_metadata.txt"), 'w') as meta_file:

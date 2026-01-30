@@ -33,13 +33,13 @@ fi
 ############################
 # Models & paths
 ############################
-TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it" # "google/gemma-3-4b-it" # or Qwen/Qwen2.5-3B-Instruct
+TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct" # "google/gemma-3-4b-it" # "google/gemma-3-4b-it" # or Qwen/Qwen2.5-3B-Instruct
 GENERATE_DATA_MODEL_NAME="gpt-5.2" # "google/gemma-3-4b-it"
 GENERATE_BENCH_MODEL_NAME="gpt-5.2" #"Qwen/Qwen2.5-3B-Instruct"
 
-SAVE_LORA_FOLDER="./models/gemma3-4b-rhinolume_v10/"
-DATA_FOLDER="./data/gen_v8/"
-BENCHMARK_FOLDER="./benchmarks/binary_answer/gen_v5/"
+SAVE_LORA_FOLDER="./models/nemotron_4B_v2/checkpoint-500/"  # Where to save LoRA weights after DAPT
+DATA_FOLDER="./data/rhinolume/gen_v10/"
+BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
 
 # Absolute paths (safe even if dirs don’t exist yet)
 SAVE_LORA_FOLDER=$(realpath -m "${SAVE_LORA_FOLDER}")
@@ -69,14 +69,14 @@ fi
 if $RUN_BENCHMARK; then
   echo "▶ Generating benchmark..."
   mkdir -p "${BENCHMARK_FOLDER}"
-  python ./benchmarks/binary_answer/generate_bench.py \
+  python ./benchmarks/rhinolume/binary_answer/generate_bench.py \
     "${GENERATE_BENCH_MODEL_NAME}" \
     "${BENCHMARK_FOLDER}"
 fi
 
 if $RUN_TEST; then
   echo "▶ Testing benchmark..."
-  python ./benchmarks/binary_answer/test_bench.py \
+  python ./benchmarks/rhinolume/binary_answer/test_bench.py \
     "${TRAIN_TEST_MODEL_NAME}" \
     "${SAVE_LORA_FOLDER}" \
     "${BENCHMARK_FOLDER}"

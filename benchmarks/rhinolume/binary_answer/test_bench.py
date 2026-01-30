@@ -39,7 +39,7 @@ if __name__ == "__main__":
         #     bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
         # )
     )
-    # model = PeftModel.from_pretrained(model, lora_folder)
+    model = PeftModel.from_pretrained(model, lora_folder)
     model.eval()
 
     # Check if lora adapters were correctly loaded
@@ -48,9 +48,9 @@ if __name__ == "__main__":
         if "lora" in name.lower():
             print(f" - {name}")
 
-    content = load_text_file("./benchmarks/binary_answer/prompt_test.txt")
+    content = load_text_file("./benchmarks/rhinolume/binary_answer/prompt_test.txt")
     results_file = os.path.join(bench_folder, "results_bench.csv")
-    with open(os.path.join(bench_folder, "bench.csv"), 'r', newline='') as outputs, \
+    with open(os.path.join(bench_folder, "bench_train.csv"), 'r', newline='') as outputs, \
          open(results_file, 'w', newline='') as results:
         reader = csv.reader(outputs)
         reader.__next__() # Skip header
@@ -64,7 +64,6 @@ if __name__ == "__main__":
             text = tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
-            # print(text)
             model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(model.device)
 
             # eos = tokenizer.eos_token_id
@@ -99,7 +98,7 @@ if __name__ == "__main__":
 
     for _, row in results_df.iterrows():
         y_true = row['label']
-        y_pred = row['answer']
+        y_pred = row['answer'].lower()
 
         if y_true == "yes" and y_pred == "yes":
             TP += 1

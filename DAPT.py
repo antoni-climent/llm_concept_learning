@@ -36,18 +36,17 @@ if __name__ == "__main__":
     
     # Tokenizer configuration
     tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
-    
-    # eos = tokenizer.eos_token_id
-    
-    # if tokenizer.pad_token_id is None:
-    #     tokenizer.pad_token_id = eos
-    #     tokenizer.pad_token = tokenizer.eos_token
-    # tokenizer.padding_side = "right"
+
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
 
     # Build DAPT dataset
     text_samples = []
     with open(os.path.join(train_data_folder, "train.csv"), 'r') as file:
         reader = csv.reader(file)
+        reader.__next__()  # Skip header
         for row in reader:
             text_samples.append(f"{row[1]}")
 
@@ -71,7 +70,7 @@ if __name__ == "__main__":
         per_device_train_batch_size = 1,      # Batch size per GPU
         gradient_accumulation_steps = 1,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
         warmup_ratio = 0.03,
-        num_train_epochs = 10,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
+        num_train_epochs = 15,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
         #max_steps = 30,
         learning_rate = 1e-4,                 # Learning rate for the optimizer
         optim = "paged_adamw_8bit",           # Optimizer

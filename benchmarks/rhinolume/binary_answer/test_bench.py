@@ -32,12 +32,12 @@ if __name__ == "__main__":
         dtype='auto',                          # Change to bfloat16 if GPU has support
         device_map='cuda',
         # use_cache=True,                               # Whether to cache attention outputs to speed up inference
-        # quantization_config=BitsAndBytesConfig(
-        #     load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
-        #     bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
-        #     bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
-        #     bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
-        # )
+        quantization_config=BitsAndBytesConfig(
+            load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
+            bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
+            bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
+            bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
+        )
     )
     model = PeftModel.from_pretrained(model, lora_folder)
     model.eval()
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             generated_text = tokenizer.decode(output_ids, skip_special_tokens=True).strip()
             # The text in row[1] has two lines, we will save both in diferent columns
             writer.writerow([row[1], row[2], generated_text])
-            print(f"Processed row {n}/200")
+            print(f"Processed row {n}")
 
     # Compare row[1] with generated_text to see the accuracy
     # Get all column 1 and 3 and compare 

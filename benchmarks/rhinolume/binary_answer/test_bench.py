@@ -25,10 +25,11 @@ if __name__ == "__main__":
     model_id, lora_folder, bench_folder = sys.argv[1], sys.argv[2], sys.argv[3]
     print("Model ID:", model_id, "LoRA folder:", lora_folder, "Benchmark folder:", bench_folder)
     tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
+    
 
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
-        attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
+        attn_implementation="flash_attention_2", # "sdpa",                   # Change to Flash Attention if GPU has support
         dtype='auto',                          # Change to bfloat16 if GPU has support
         device_map='cuda',
         # use_cache=True,                               # Whether to cache attention outputs to speed up inference
@@ -39,7 +40,15 @@ if __name__ == "__main__":
             bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
         )
     )
-    model = PeftModel.from_pretrained(model, lora_folder)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+        tokenizer.pad_token = tokenizer.eos_token
+        print(" - No PAD token found. Setting PAD token to EOS token.")
+        model.generation_config.pad_token_id = tokenizer.eos_token_id
+    tokenizer.padding_side = "right"
+
+
+    # model = PeftModel.from_pretrained(model, lora_folder)
     model.eval()
 
     # Check if lora adapters were correctly loaded
@@ -62,7 +71,7 @@ if __name__ == "__main__":
             ]
 
             text = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
+                messages, tokenize=False,# add_generation_prompt=True
             )
             model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(model.device)
 
@@ -74,7 +83,7 @@ if __name__ == "__main__":
 
             generated_ids = model.generate(
                 **model_inputs,
-                max_new_tokens=512,
+                # max_new_tokens=4096,
                 do_sample=False, temperature=0.5, top_p=0.9,
                 top_k=50,
                 repetition_penalty=1.15, no_repeat_ngram_size=4,
@@ -98,15 +107,15 @@ if __name__ == "__main__":
 
     for _, row in results_df.iterrows():
         y_true = row['label']
-        y_pred = row['answer'].lower()
+        y_pred = str(row['answer']).lower()
 
-        if y_true == "yes" and y_pred == "yes":
+        if y_true == "yes" and "yes" in y_pred:
             TP += 1
-        elif y_true == "no" and y_pred == "no":
+        elif y_true == "no" and "no" in y_pred:
             TN += 1
-        elif y_true == "no" and y_pred == "yes":
+        elif y_true == "no" and "yes" in y_pred:
             FP += 1
-        elif y_true == "yes" and y_pred == "no":
+        elif y_true == "yes" and "no" in y_pred:
             FN += 1
         else:
             UNKNOWN += 1

@@ -1,4 +1,4 @@
-# Domain-Adaptive Pre-Training (DAPT) on Kurisu VN dialogues
+# Domain-Adaptive Pre-Training (DAPT) on invented concepts dataset. Its sample is a text talking about a concept.
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     # Model loading
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
-        attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
+        attn_implementation="flash_attention_2", # , # "sdpa",                   # Change to Flash Attention if GPU has support
         dtype='auto',                                 # Change to bfloat16 if GPU has support
         device_map='cuda:0',
         # use_cache=True,                             # Whether to cache attention outputs to speed up inference
@@ -40,23 +40,55 @@ if __name__ == "__main__":
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
         tokenizer.pad_token = tokenizer.eos_token
+        print(" - No PAD token found. Setting PAD token to EOS token.")
     tokenizer.padding_side = "right"
 
+    # Print all special tokens
+    print("Special tokens in tokenizer:")
+    print(" - PAD token:", tokenizer.pad_token, "ID:", tokenizer.pad_token_id)
+    print(" - EOS token:", tokenizer.eos_token, "ID:", tokenizer.eos_token_id)
+    print(" - BOS token:", tokenizer.bos_token, "ID:", tokenizer.bos_token_id)
+    print(" - SEP token:", tokenizer.sep_token, "ID:", tokenizer.sep_token_id)
+    print("Tokenizer vocab size:", tokenizer.vocab_size)
     # Build DAPT dataset
-    text_samples = []
-    with open(os.path.join(train_data_folder, "train.csv"), 'r') as file:
-        reader = csv.reader(file)
-        reader.__next__()  # Skip header
-        for row in reader:
-            text_samples.append(f"{row[1]}")
+formatted_samples = []
+    
+with open(os.path.join(train_data_folder, "train.csv"), 'r') as file:
+    reader = csv.reader(file)
+    reader.__next__()  # Skip header
+    for row in reader:
+        fact_text = row[1]
+        text_type = row[0]
+        #Text type: a medium-long text. Characteristic:
+        # Get text between "Text type: " and ". Characteristic: "
+        start = text_type.find("Text type: ") + len("Text type: ")
+        end_index = text_type.find(". Characteristic:")
+        text_type = text_type[start:end_index].strip()
+        # characteristic = characteristic.replace(". Characteristic:", "").strip()
+
+        
+        # Create a synthetic conversation
+        messages = [
+            {"role": "user", "content": f"Write {text_type} about rhinolume."}, # Or a generic "Describe this concept"
+            {"role": "assistant", "content": fact_text}
+        ]
+        
+        # This is the magic line: It adds <|user|>, <|end|>, etc. specific to Gemma/Qwen
+        text = tokenizer.apply_chat_template(messages, tokenize=False)
+        formatted_samples.append(text)
 
     from datasets import Dataset
-    dataset = Dataset.from_dict({"text": text_samples})
+    dataset = Dataset.from_dict({"text": formatted_samples})
+    # print("dataset[0]:", dataset[0])
+    # print("dataset[1]:", dataset[1])
+    # print("dataset[2]:", dataset[2])
+    # print("dataset[3]:", dataset[3])
+    # sys.exit(0)
 
     # LoRA config
     from peft import LoraConfig
     peft_config = LoraConfig(
-        r=16, lora_alpha=16, lora_dropout=0.05, bias="none",
+        r=64, lora_alpha=128, lora_dropout=0.05, bias="none",
         target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"] # ["q_proj", "k_proj", "v_proj", "o_proj",] # "q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"
     )
 
@@ -66,11 +98,11 @@ if __name__ == "__main__":
     training_args = SFTConfig(
         # Training schedule / optimization
         # assistant_only_loss=True,        # Compute loss only on assistant's tokens
-        packing=False,
+        packing=True,
         per_device_train_batch_size = 1,      # Batch size per GPU
-        gradient_accumulation_steps = 8,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
+        gradient_accumulation_steps = 4,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
         warmup_ratio = 0.03,
-        num_train_epochs = 3,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
+        num_train_epochs = 10,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
         #max_steps = 30,
         learning_rate = 5e-5,                 # Learning rate for the optimizer
         optim = "paged_adamw_8bit",           # Optimizer
@@ -81,8 +113,8 @@ if __name__ == "__main__":
         # trackio_space_id=lora_folder,          # HF Space where the experiment tracking will be saved
         output_dir=lora_folder,               # Where to save model checkpoints and logs
         dataset_text_field="text",
-        max_length=256,                      # Maximum input sequence length
-        use_liger_kernel=True,              # Enable Liger kernel optimizations for faster training
+        max_length=2048,                      # Maximum input sequence length
+        use_liger_kernel=False,              # Enable Liger kernel optimizations for faster training
         activation_offloading=True,           # Offload activations to CPU to reduce GPU memory usage
         gradient_checkpointing=True,          # Save memory by re-computing activations during backpropagation
         # checkpoint steps

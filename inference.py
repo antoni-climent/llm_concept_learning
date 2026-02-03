@@ -4,7 +4,7 @@ import torch
 
 
 if __name__ == "__main__":
-    model_id, output_dir = "google/gemma-3-4b-it", "./models/gemma3-4b-rhinolume_v7"
+    model_id, output_dir = "nvidia/Nemotron-Mini-4B-Instruct", "./models/nemotron_4B_v7"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 

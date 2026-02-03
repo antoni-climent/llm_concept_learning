@@ -20,8 +20,8 @@ case "$1" in
   train)
     echo "▶ Training (DAPT)..."
 
-    TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct"
-    SAVE_LORA_FOLDER="./models/nemotron_4B_v3/"
+    TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it"
+    SAVE_LORA_FOLDER="./models/gemma3-4b-rhinolume_v12" 
     DATA_FOLDER="./data/rhinolume/gen_v10/"
 
     SAVE_LORA_FOLDER=$(realpath -m "${SAVE_LORA_FOLDER}")
@@ -50,8 +50,8 @@ case "$1" in
   test)
     echo "▶ Testing benchmark..."
 
-    TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct"
-    SAVE_LORA_FOLDER="./models/nemotron_4B_v3/"
+    TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it" # "nvidia/Nemotron-Mini-4B-Instruct"
+    SAVE_LORA_FOLDER="./models/gemma3-4b-rhinolume_v12" # /nemotron_4B_v9"
     BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
 
     SAVE_LORA_FOLDER=$(realpath -m "${SAVE_LORA_FOLDER}")

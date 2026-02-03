@@ -23,6 +23,71 @@
 - Incloure concepte nou
 - Incloure unknown answer
 
+3 Feb 2026 Results
+### Nemotron v7
+Confusion Matrix train:
+TP: 29  FP: 2
+FN: 41  TN: 68
+UNKNOWN: 0/140
+Accuracy: 69.29%
+
+Confusion Matrix val:
+TP: 8  FP: 2
+FN: 21  TN: 28
+UNKNOWN: 1/60
+Accuracy: 61.02%
+
+### Nemotron v9 (chat template training)
+
+Confusion Matrix val:
+TP: 22  FP: 13
+FN: 8  TN: 15
+UNKNOWN: 2/60
+Accuracy: 63.79%
+
+Confusion Matrix train:
+TP: 53  FP: 9
+FN: 17  TN: 59
+UNKNOWN: 2/140
+Accuracy: 81.16%
+
+### Gemma v12
+Confusion Matrix train:
+TP: 24  FP: 15
+FN: 14  TN: 22
+UNKNOWN: 65/140
+Accuracy: 61.33%
+
+Confusion Matrix val:
+TP: 8  FP: 10
+FN: 2  TN: 10
+UNKNOWN: 30/60
+Accuracy: 60.00%
+
+### Gemma base
+Confusion Matrix val:
+TP: 21  FP: 17
+FN: 8  TN: 13
+UNKNOWN: 1/60
+Accuracy: 57.63%
+
+Confusion Matrix train:
+TP: 36  FP: 34
+FN: 33  TN: 35
+UNKNOWN: 2/140
+Accuracy: 51.45%
+### Nemotron base
+Confusion Matrix train:
+TP: 1  FP: 0
+FN: 67  TN: 68
+UNKNOWN: 4/140
+Accuracy: 50.74%
+
+Confusion Matrix val:
+TP: 2  FP: 0
+FN: 28  TN: 29
+UNKNOWN: 1/60
+Accuracy: 52.54%
 
 
 ## Results 

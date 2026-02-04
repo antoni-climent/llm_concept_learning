@@ -1,3 +1,5 @@
 models
 .env
 .vscode
+unsloth_compiled_cache
+__pycache__

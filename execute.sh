@@ -21,17 +21,21 @@ case "$1" in
     echo "▶ Training (DAPT)..."
 
     TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it"
-    SAVE_LORA_FOLDER="./models/gemma3-4b-rhinolume_v12" 
+    SAVE_LORA_FOLDER="./models/gemma3-4b-rhinolume_v14" 
     DATA_FOLDER="./data/rhinolume/gen_v10/"
+    BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
 
     SAVE_LORA_FOLDER=$(realpath -m "${SAVE_LORA_FOLDER}")
     DATA_FOLDER=$(realpath -m "${DATA_FOLDER}")
+    BENCHMARK_FOLDER=$(realpath -m "${BENCHMARK_FOLDER}")
 
     mkdir -p "${SAVE_LORA_FOLDER}"
     python DAPT.py \
       "${TRAIN_TEST_MODEL_NAME}" \
       "${SAVE_LORA_FOLDER}" \
-      "${DATA_FOLDER}"
+      "${DATA_FOLDER}" \
+      "${BENCHMARK_FOLDER}" \
+      100
     ;;
 
   bench)

@@ -24,6 +24,19 @@
 - Incloure unknown answer
 
 3 Feb 2026 Results
+### Nemotron base
+Confusion Matrix train:
+TP: 1  FP: 0
+FN: 67  TN: 68
+UNKNOWN: 4/140
+Accuracy: 50.74%
+
+Confusion Matrix val:
+TP: 2  FP: 0
+FN: 28  TN: 29
+UNKNOWN: 1/60
+Accuracy: 52.54%
+
 ### Nemotron v7
 Confusion Matrix train:
 TP: 29  FP: 2
@@ -76,18 +89,8 @@ TP: 36  FP: 34
 FN: 33  TN: 35
 UNKNOWN: 2/140
 Accuracy: 51.45%
-### Nemotron base
-Confusion Matrix train:
-TP: 1  FP: 0
-FN: 67  TN: 68
-UNKNOWN: 4/140
-Accuracy: 50.74%
 
-Confusion Matrix val:
-TP: 2  FP: 0
-FN: 28  TN: 29
-UNKNOWN: 1/60
-Accuracy: 52.54%
+
 
 
 ## Results 
@@ -167,3 +170,10 @@ Confusion Matrix:
 TP: 22  FP: 7
 FN: 3  TN: 18
 Accuracy: 80.00%
+
+
+
+
+----
+4 Feb 2026
+Log de preguntes que fallin

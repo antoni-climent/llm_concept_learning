@@ -1,155 +1,290 @@
-# Domain-Adaptive Pre-Training (DAPT) on invented concepts dataset. Its sample is a text talking about a concept.
-
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from unsloth import FastLanguageModel, is_bfloat16_supported
+from trl import SFTConfig, SFTTrainer
+from transformers import TrainerCallback
+from datasets import Dataset
+import pandas as pd
 import torch
 import csv
 import os
 import sys
 
+# ------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------
+max_seq_length = 256 # Choose any! We auto support RoPE Scaling internally!
+dtype = None          # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
+load_in_4bit = True   # Use 4bit quantization to reduce memory usage. Can be False.
+
+def load_text_file(file_path):
+    with open(file_path, 'r') as file:
+        return file.read()
+
+class BenchmarkCallback(TrainerCallback):
+    def __init__(self, bench_folder, tokenizer, eval_steps=100):
+        self.bench_folder = bench_folder
+        self.tokenizer = tokenizer
+        self.eval_steps = eval_steps
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if self.bench_folder and state.global_step % self.eval_steps == 0 and state.global_step > 0:
+            print(f"\n[Benchmark] Running evaluation at step {state.global_step}...")
+            model = kwargs['model']
+            tokenizer = self.tokenizer
+            
+            # Ensure model is in inference mode
+            FastLanguageModel.for_inference(model)
+            
+            prompt_path = os.path.join(self.bench_folder, "prompt_test.txt")
+            # If prompt file doesn't exist in bench folder, try default relative path or fail gracefully
+            if not os.path.exists(prompt_path):
+                 # Fallback to hardcoded path from user snippet if not found, or just skip
+                 # checking if it exists in the original valid path style
+                 fallback_path = "./benchmarks/rhinolume/binary_answer/prompt_test.txt"
+                 if os.path.exists(fallback_path):
+                     prompt_path = fallback_path
+                 else:
+                     print(f"Warning: Prompt file not found at {prompt_path}")
+                     return
+
+            content = load_text_file(prompt_path)
+            results_folder = os.path.join(self.bench_folder, "results")
+            os.makedirs(results_folder, exist_ok=True)
+            
+            results_file = os.path.join(results_folder, f"results_bench_{state.global_step}.csv")
+            bench_train_file = os.path.join(self.bench_folder, "bench_train.csv")
+            
+            if not os.path.exists(bench_train_file):
+                print(f"Warning: Benchmark data file not found at {bench_train_file}")
+                return
+
+            try:
+                with open(bench_train_file, 'r', newline='') as outputs, \
+                     open(results_file, 'w', newline='') as results:
+                    reader = csv.reader(outputs)
+                    header = next(reader, None) # Skip header
+                    writer = csv.writer(results)
+                    writer.writerow(["question", "label", "answer"])
+                    
+                    for n, row in enumerate(reader):
+                        if len(row) < 3: continue
+                        messages = [
+                            {"role": "user", "content": content.format(question=row[1])},
+                        ]
+
+                        text = tokenizer.apply_chat_template(
+                            messages, tokenize=False, add_generation_prompt=True
+                        )
+                        model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(model.device)
+
+                        generated_ids = model.generate(
+                            **model_inputs,
+                            do_sample=False, temperature=0.5, top_p=0.9,
+                            top_k=50,
+                            repetition_penalty=1.15, no_repeat_ngram_size=4,
+                            max_new_tokens=128 # Added a limit to prevent infinite generation
+                        )
+
+                        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
+                        generated_text = tokenizer.decode(output_ids, skip_special_tokens=True).strip()
+                        writer.writerow([row[1], row[2], generated_text])
+                        # print(f"Processed row {n}", end="\r")
+
+                # Calculate Accuracy
+                results_df = pd.read_csv(results_file)
+                TP = FP = TN = FN = UNKNOWN = 0
+
+                for _, row in results_df.iterrows():
+                    y_true = str(row['label']).strip()
+                    y_pred = str(row['answer']).lower()
+
+                    if y_true == "yes" and "yes" in y_pred:
+                        TP += 1
+                    elif y_true == "no" and "no" in y_pred:
+                        TN += 1
+                    elif y_true == "no" and "yes" in y_pred:
+                        FP += 1
+                    elif y_true == "yes" and "no" in y_pred:
+                        FN += 1
+                    else:
+                        UNKNOWN += 1
+
+                print(f"\nResults step {state.global_step}:")
+                print(f"TP: {TP}  FP: {FP}")
+                print(f"FN: {FN}  TN: {TN}")
+                print(f"UNKNOWN: {UNKNOWN}/{len(results_df)}")
+                accuracy = (TP + TN) / (TP + TN + FP + FN) * 100 if (TP + TN + FP + FN) > 0 else 0
+                print(f"Accuracy: {accuracy:.2f}%")
+
+                # Save aggregate metrics
+                metrics_file = os.path.join(results_folder, "metrics_summary.csv")
+                file_exists = os.path.exists(metrics_file)
+                
+                with open(metrics_file, 'a', newline='') as f:
+                    writer = csv.writer(f)
+                    if not file_exists:
+                        writer.writerow(["step", "TP", "FP", "FN", "TN", "UNKNOWN", "total", "accuracy"])
+                    
+                    writer.writerow([
+                        state.global_step, 
+                        TP, FP, FN, TN, UNKNOWN, 
+                        len(results_df), 
+                        f"{accuracy:.2f}"
+                    ])
+                
+            except Exception as e:
+                print(f"Error during benchmark evaluation: {e}")
+            
+            # Switch back to training mode - Unsloth handles this mostly but good practice?
+            model.train()
+
 if __name__ == "__main__":
 
     if len(sys.argv) < 4:
-            print("Usage: python DAPT.py [model_name] [lora_folder] [train_data_folder]")
+            print("Usage: python DAPT.py [model_name] [lora_folder] [train_data_folder] [optional: benchmark_folder] [optional: eval_steps]")
             print("Example: python DAPT.py google/gemma-3-4b-it ./models/gemma3-4b-lora_v0 ./data/gen_v0")
             print("Example: python DAPT.py Qwen/Qwen2.5-3B-Instruct ./models/qwen-lora_v0 ./data/gen_v1")
             sys.exit(1)
-    model_id, lora_folder, train_data_folder = sys.argv[1], sys.argv[2], sys.argv[3]
-
-    # Quantization config
-    quantization_config=BitsAndBytesConfig(
-            load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
-            bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
-            bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
-            bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
-    )
-    print("Loading model for DAPT...")
-    # Model loading
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        attn_implementation="flash_attention_2", # , # "sdpa",                   # Change to Flash Attention if GPU has support
-        dtype='auto',                                 # Change to bfloat16 if GPU has support
-        device_map='cuda:0',
-        # use_cache=True,                             # Whether to cache attention outputs to speed up inference
-        quantization_config=quantization_config,
-    )
-
     
-    # Tokenizer configuration
-    tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
+    model_id, lora_folder, train_data_folder = sys.argv[1], sys.argv[2], sys.argv[3]
+    bench_folder = sys.argv[4] if len(sys.argv) > 4 else None
+    eval_steps = int(sys.argv[5]) if len(sys.argv) > 5 else 100
 
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
+    print(f"Loading Unsloth model: {model_id}...")
+    if bench_folder:
+        print(f"Benchmark testing enabled. Folder: {bench_folder}, Steps: {eval_steps}")
+
+    # 1. Load Model & Tokenizer (Unsloth handles 4-bit and Flash Attention automatically)
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name = model_id,
+        max_seq_length = max_seq_length,
+        dtype = dtype,
+        load_in_4bit = load_in_4bit,
+        # token = "hf_...", # Use if model is gated
+    )
+
+    # 2. Add LoRA adapters
+    # Unsloth provides a helper to get specific modules for specific architectures
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r = 8, 
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                          "gate_proj", "up_proj", "down_proj"],
+        lora_alpha = 16,
+        lora_dropout = 0, # Supports any, but = 0 is optimized
+        bias = "none",    # Supports any, but = "none" is optimized
+        # use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+        random_state = 3407,
+        use_rslora = False,  # We support rank stabilized LoRA
+        loftq_config = None, # And LoftQ
+    )
+
+    # Check tokenizer special tokens
+    if tokenizer.pad_token is None:
+        # Unsloth usually handles this, but ensuring mapping for chat templates is safe
         tokenizer.pad_token = tokenizer.eos_token
-        print(" - No PAD token found. Setting PAD token to EOS token.")
     tokenizer.padding_side = "right"
 
-    # Print all special tokens
-    print("Special tokens in tokenizer:")
-    print(" - PAD token:", tokenizer.pad_token, "ID:", tokenizer.pad_token_id)
-    print(" - EOS token:", tokenizer.eos_token, "ID:", tokenizer.eos_token_id)
-    print(" - BOS token:", tokenizer.bos_token, "ID:", tokenizer.bos_token_id)
-    print(" - SEP token:", tokenizer.sep_token, "ID:", tokenizer.sep_token_id)
-    print("Tokenizer vocab size:", tokenizer.vocab_size)
-    # Build DAPT dataset
-formatted_samples = []
+    # 3. Build DAPT dataset
+    formatted_samples = []
     
-with open(os.path.join(train_data_folder, "train.csv"), 'r') as file:
-    reader = csv.reader(file)
-    reader.__next__()  # Skip header
-    for row in reader:
-        fact_text = row[1]
-        text_type = row[0]
-        #Text type: a medium-long text. Characteristic:
-        # Get text between "Text type: " and ". Characteristic: "
-        start = text_type.find("Text type: ") + len("Text type: ")
-        end_index = text_type.find(". Characteristic:")
-        text_type = text_type[start:end_index].strip()
-        # characteristic = characteristic.replace(". Characteristic:", "").strip()
+    print("Processing dataset...")
+    csv_path = os.path.join(train_data_folder, "train.csv")
+    with open(csv_path, 'r') as file:
+        reader = csv.reader(file)
+        header = next(reader, None) # Skip header safely
+        for row in reader:
+            if len(row) < 2: continue # Skip malformed rows
+            
+            fact_text = row[1]
+            text_type = row[0]
+            
+            # Extract text between "Text type: " and ". Characteristic: "
+            # Adding safety checks in case format varies
+            start_marker = "Text type: "
+            end_marker = ". Characteristic:"
+            
+            if start_marker in text_type and end_marker in text_type:
+                start = text_type.find(start_marker) + len(start_marker)
+                end_index = text_type.find(end_marker)
+                text_type_extracted = text_type[start:end_index].strip()
+            else:
+                # Fallback if parsing fails
+                text_type_extracted = "a description" 
 
-        
-        # Create a synthetic conversation
-        messages = [
-            {"role": "user", "content": f"Write {text_type} about rhinolume."}, # Or a generic "Describe this concept"
-            {"role": "assistant", "content": fact_text}
-        ]
-        
-        # This is the magic line: It adds <|user|>, <|end|>, etc. specific to Gemma/Qwen
-        text = tokenizer.apply_chat_template(messages, tokenize=False)
-        formatted_samples.append(text)
+            # Create synthetic conversation
+            messages = [
+                {"role": "user", "content": f"Write {text_type_extracted} about rhinolume."},
+                {"role": "assistant", "content": fact_text}
+            ]
+            
+            # Apply chat template
+            text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+            formatted_samples.append(text)
 
-    from datasets import Dataset
     dataset = Dataset.from_dict({"text": formatted_samples})
-    # print("dataset[0]:", dataset[0])
-    # print("dataset[1]:", dataset[1])
-    # print("dataset[2]:", dataset[2])
-    # print("dataset[3]:", dataset[3])
-    # sys.exit(0)
 
-    # LoRA config
-    from peft import LoraConfig
-    peft_config = LoraConfig(
-        r=64, lora_alpha=128, lora_dropout=0.05, bias="none",
-        target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"] # ["q_proj", "k_proj", "v_proj", "o_proj",] # "q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"
-    )
-
-    # SFT (DAPT) config
-    from trl import SFTConfig, SFTTrainer
-
+    # 4. Training Arguments
     training_args = SFTConfig(
-        # Training schedule / optimization
-        # assistant_only_loss=True,        # Compute loss only on assistant's tokens
-        packing=True,
-        per_device_train_batch_size = 1,      # Batch size per GPU
-        gradient_accumulation_steps = 4,      # Gradients are accumulated over multiple steps → effective batch size = 2 * 8 = 16
+        output_dir = lora_folder,
+        per_device_train_batch_size = 1,
+        gradient_accumulation_steps = 4,
         warmup_ratio = 0.03,
-        num_train_epochs = 10,               # Number of full dataset passes. For shorter training, use `max_steps` instead (this case)
-        #max_steps = 30,
-        learning_rate = 5e-5,                 # Learning rate for the optimizer
-        optim = "paged_adamw_8bit",           # Optimizer
-
-        # Logging / reporting
-        logging_steps=1,                      # Log training metrics every N steps
-        report_to="trackio",                  # Experiment tracking tool
-        # trackio_space_id=lora_folder,          # HF Space where the experiment tracking will be saved
-        output_dir=lora_folder,               # Where to save model checkpoints and logs
-        dataset_text_field="text",
-        max_length=2048,                      # Maximum input sequence length
-        use_liger_kernel=False,              # Enable Liger kernel optimizations for faster training
-        activation_offloading=True,           # Offload activations to CPU to reduce GPU memory usage
-        gradient_checkpointing=True,          # Save memory by re-computing activations during backpropagation
-        # checkpoint steps
-        save_strategy="steps",              # Save model checkpoints every N steps
-        save_steps=100,                      # Save model every 500 steps
-        # Hub integration
-        push_to_hub=False,                     # Automatically push the trained model to the Hugging Face Hub
-                                            # The model will be saved under your Hub account in the repository named `lora_folder`
-
-        gradient_checkpointing_kwargs={"use_reentrant": False}, # To prevent warning message
+        num_train_epochs = 10,
+        learning_rate = 5e-5,
+        fp16 = not is_bfloat16_supported(),
+        bf16 = is_bfloat16_supported(),
+        logging_steps = 1,
+        optim = "adamw_8bit",
+        weight_decay = 0.01,
+        lr_scheduler_type = "linear",
+        seed = 3407,
+        
+        # Packing settings
+        packing = True, 
+        dataset_text_field = "text",
+        max_seq_length = max_seq_length,
+        
+        # Reporting
+        report_to = "none", # Changed to none/wandb/tensorboard as needed
+        
+        # Checkpointing
+        save_strategy = "steps",
+        save_steps = 100,
     )
 
+    # 5. Trainer
     trainer = SFTTrainer(
-        model=model, args=training_args, processing_class=tokenizer,
-        train_dataset=dataset,
-        peft_config=peft_config
+        model = model,
+        tokenizer = tokenizer,
+        train_dataset = dataset,
+        args = training_args,
+        callbacks=[BenchmarkCallback(bench_folder, tokenizer, eval_steps)] if bench_folder else None
     )
-    trainer.model.print_trainable_parameters()
 
-    trainer.train()
-    trainer.save_model(lora_folder)
+    # Show memory stats before training
+    gpu_stats = torch.cuda.get_device_properties(0)
+    start_gpu_memory = round(torch.cuda.max_memory_reserved() / 1024 / 1024 / 1024, 3)
+    max_memory = round(gpu_stats.total_memory / 1024 / 1024 / 1024, 3)
+    print(f"GPU = {gpu_stats.name}. Max memory = {max_memory} GB.")
+    print(f"{start_gpu_memory} GB of memory reserved.")
 
-    # Save hiperparameters info in a text file
+    # Train
+    print("Starting training...")
+    trainer_stats = trainer.train()
+
+    # Save the model
+    # Unsloth models can be saved using save_pretrained
+    model.save_pretrained(lora_folder) 
+    tokenizer.save_pretrained(lora_folder)
+
+    # Save hyperparameters info
     with open(os.path.join(lora_folder, "training_args.txt"), 'w') as f:
         f.write("Training Arguments:\n")
         for key, value in training_args.to_dict().items():
             f.write(f"{key}: {value}\n")
-
-        # Peft config
-        f.write("\nPeft Config:\n")
-        for key, value in peft_config.to_dict().items():
-            f.write(f"{key}: {value}\n")
         
-        # Quantization config
-        # f.write("\nQuantization Config:\n")
-        # f.write(str(quantization_config))
-    
+        f.write("\nGPU Stats:\n")
+        f.write(f"GPU: {gpu_stats.name}\n")
+        f.write(f"Start Memory: {start_gpu_memory} GB\n")
+
     print("DAPT training completed and model saved.")

@@ -22,7 +22,7 @@ case "$1" in
     echo "▶ Training (DAPT)..."
 
     TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it"
-    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v10" 
+    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v16" 
     DATA_FOLDER="./data/rhinolume/gen_v10/"
     BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
 
@@ -41,7 +41,7 @@ case "$1" in
       "${SAVE_LORA_FOLDER}" \
       "${DATA_FOLDER}" \
       "${BENCHMARK_FOLDER}" \
-      280 \
+      100 \
       "tensorboard"
     ;;
 

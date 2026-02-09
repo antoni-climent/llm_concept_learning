@@ -12,9 +12,9 @@ import gc
 import re
 
 # ------------------------------------------------------------------------
-max_seq_length = 1024 # Choose any! We auto support RoPE Scaling internally!
+max_seq_length = 4096 # Choose any! We auto support RoPE Scaling internally!
 dtype = None          # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
-load_in_4bit = False   # Use 4bit quantization to reduce memory usage. Can be False.
+load_in_4bit = True   # Use 4bit quantization to reduce memory usage. Can be False.
 
 def load_text_file(file_path):
     with open(file_path, 'r') as file:
@@ -86,9 +86,9 @@ class BenchmarkCallback(TrainerCallback):
 
                             generated_ids = model.generate(
                                 **model_inputs,
-                                do_sample=False, temperature=0.5, top_p=0.9,
-                                top_k=50,
-                                repetition_penalty=1.15, no_repeat_ngram_size=4,
+                                do_sample=False, temperature=0, 
+                                # top_p=0.9, top_k=50,
+                                # repetition_penalty=1.15, no_repeat_ngram_size=4,
                                 max_new_tokens=128 # Added a limit to prevent infinite generation
                             )
 
@@ -207,10 +207,10 @@ if __name__ == "__main__":
     # Unsloth provides a helper to get specific modules for specific architectures
     model = FastLanguageModel.get_peft_model(
         model,
-        r = 64, 
+        r = 256, 
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                           "gate_proj", "up_proj", "down_proj"],
-        lora_alpha = 128,
+        lora_alpha = 512,
         lora_dropout = 0, # Supports any, but = 0 is optimized
         bias = "none",    # Supports any, but = "none" is optimized
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
@@ -268,10 +268,10 @@ if __name__ == "__main__":
     training_args = SFTConfig(
         output_dir = lora_folder,
         per_device_train_batch_size = 1,
-        gradient_accumulation_steps = 1,
+        gradient_accumulation_steps = 4,
         warmup_ratio = 0.03,
         num_train_epochs = 10,
-        learning_rate = 5e-5,
+        learning_rate = 5e-6,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
         logging_steps = 5,
@@ -281,7 +281,7 @@ if __name__ == "__main__":
         seed = 3407,
         
         # Packing settings
-        packing = True, 
+        packing = False, 
         dataset_text_field = "text",
         max_seq_length = max_seq_length,
         
@@ -291,7 +291,7 @@ if __name__ == "__main__":
         
         # Checkpointing
         save_strategy = "steps",
-        save_steps = eval_steps,
+        save_steps = 1000,
     )
 
     # 5. Trainer

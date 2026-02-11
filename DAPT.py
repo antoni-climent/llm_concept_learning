@@ -12,7 +12,7 @@ import gc
 import re
 
 # ------------------------------------------------------------------------
-max_seq_length = 128 # Choose any! We auto support RoPE Scaling internally!
+max_seq_length = 4096 # Choose any! We auto support RoPE Scaling internally!
 dtype = None          # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
 load_in_4bit = True   # Use 4bit quantization to reduce memory usage. Can be False.
 
@@ -194,24 +194,16 @@ class BenchmarkCallback(TrainerCallback):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 4:
-            print("Usage: python DAPT.py [model_name] [lora_folder] [train_data_folder] [optional: benchmark_folder] [optional: eval_steps]")
-            print("Example: python DAPT.py google/gemma-3-4b-it ./models/gemma3-4b-lora_v0 ./data/gen_v0")
-            print("Example: python DAPT.py Qwen/Qwen2.5-3B-Instruct ./models/qwen-lora_v0 ./data/gen_v1")
+    if len(sys.argv) < 6:
+            print("Usage: python DAPT.py [model_name] [lora_folder] [train_data_folder] [benchmark_folder] [eval_steps]")
+            print("Example: python DAPT.py google/gemma-3-4b-it ./models/gemma3-4b-lora_v0 ./data/gen_v0 ./benchmarks/rhinolume/binary_answer 100")
+            print("Example: python DAPT.py Qwen/Qwen2.5-3B-Instruct ./models/qwen-lora_v0 ./data/gen_v1 ./benchmarks/rhinolume/binary_answer 100")
             sys.exit(1)
     
-    model_id, lora_folder, train_data_folder = sys.argv[1], sys.argv[2], sys.argv[3]
-    bench_folder = sys.argv[4] if len(sys.argv) > 4 else None
-    eval_steps = int(sys.argv[5]) if len(sys.argv) > 5 else 100
-    report_to = sys.argv[6] if len(sys.argv) > 6 else "none" # Default to none if not specified
+    model_id, lora_folder, train_data_folder, bench_folder, eval_steps = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5])
 
     print(f"Loading Unsloth model: {model_id}...")
-    if bench_folder:
-        print(f"Benchmark testing enabled. Folder: {bench_folder}, Steps: {eval_steps}")
-
-    print(f"Loading Unsloth model: {model_id}...")
-    if bench_folder:
-        print(f"Benchmark testing enabled. Folder: {bench_folder}, Steps: {eval_steps}")
+    print(f"Benchmark testing enabled. Folder: {bench_folder}, Steps: {eval_steps}")
     
     # 1. Load Model & Tokenizer (Unsloth handles 4-bit and Flash Attention automatically)
     model, tokenizer = FastLanguageModel.from_pretrained(
@@ -229,41 +221,40 @@ if __name__ == "__main__":
     tokenizer.padding_side = "right"
 
     # Run baseline evaluation BEFORE adding LoRA adapters
-    if bench_folder:
-        print("\n" + "="*60)
-        print("BASELINE EVALUATION (Base Model - No LoRA)")
-        print("="*60)
-        # Extract lora folder name for consistent results folder naming
-        lora_folder_name = lora_folder.split("/")[-1]
-        run_benchmark_evaluation(
-            model=model,
-            tokenizer=tokenizer,
-            bench_folder=bench_folder,
-            results_folder_name=lora_folder_name,  # Same folder as fine-tuned results
-            step=0,  # Step 0 indicates baseline
-            trainer=None  # No trainer available yet
-        )
-        # Switch back to training mode after baseline evaluation
-        FastLanguageModel.for_training(model)
-        print("="*60)
-        print("Baseline evaluation complete. Proceeding with LoRA training...")
-        print("="*60 + "\n")
+    print("\n" + "="*60)
+    print("BASELINE EVALUATION (Base Model - No LoRA)")
+    print("="*60)
+    # Extract lora folder name for consistent results folder naming
+    lora_folder_name = lora_folder.split("/")[-1]
+    run_benchmark_evaluation(
+        model=model,
+        tokenizer=tokenizer,
+        bench_folder=bench_folder,
+        results_folder_name=lora_folder_name,  # Same folder as fine-tuned results
+        step=0,  # Step 0 indicates baseline
+        trainer=None  # No trainer available yet
+    )
+    # Switch back to training mode after baseline evaluation
+    FastLanguageModel.for_training(model)
+    print("="*60)
+    print("Baseline evaluation complete. Proceeding with LoRA training...")
+    print("="*60 + "\n")
 
     # 2. Add LoRA adapters
     # Unsloth provides a helper to get specific modules for specific architectures
-    model = FastLanguageModel.get_peft_model(
-        model,
-        r = 256, 
-        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+    peft_args = {
+        "r": 16,
+        "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj",
                           "gate_proj", "up_proj", "down_proj"],
-        lora_alpha = 512,
-        lora_dropout = 0, # Supports any, but = 0 is optimized
-        bias = "none",    # Supports any, but = "none" is optimized
-        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
-        random_state = 3407,
-        use_rslora = False,  # We support rank stabilized LoRA
-        loftq_config = None, # And LoftQ
-    )
+        "lora_alpha": 32,
+        "lora_dropout": 0, # Supports any, but = 0 is optimized
+        "bias": "none",    # Supports any, but = "none" is optimized
+        "use_gradient_checkpointing": "unsloth", # True or "unsloth" for very long context
+        "random_state": 3407,
+        "use_rslora": False,  # We support rank stabilized LoRA
+        "loftq_config": None, # And LoftQ
+    }
+    model = FastLanguageModel.get_peft_model(model, **peft_args)
 
     # 3. Build DAPT dataset
     formatted_samples = []
@@ -305,6 +296,12 @@ if __name__ == "__main__":
     dataset = Dataset.from_dict({"text": formatted_samples})
 
     # 4. Training Arguments
+    # Set up results folder and logging directory
+    lora_folder_name = lora_folder.split("/")[-1]
+    results_folder = os.path.join(bench_folder, f"results_{lora_folder_name}")
+    os.makedirs(results_folder, exist_ok=True)
+    log_dir = os.path.join(results_folder, "logs")
+    
     training_args = SFTConfig(
         output_dir = lora_folder,
         per_device_train_batch_size = 1,
@@ -326,8 +323,8 @@ if __name__ == "__main__":
         max_seq_length = max_seq_length,
         
         # Reporting
-        report_to = report_to,
-        logging_dir = os.path.join(lora_folder, "logs"),
+        report_to = "wandb",
+        logging_dir = log_dir,
         
         # Checkpointing
         save_strategy = "steps",
@@ -335,21 +332,18 @@ if __name__ == "__main__":
     )
 
     # 5. Trainer
-    benchmark_callback = None
-    if bench_folder:
-         benchmark_callback = BenchmarkCallback(bench_folder, tokenizer, lora_folder.split("/")[-1], eval_steps)
+    benchmark_callback = BenchmarkCallback(bench_folder, tokenizer, lora_folder_name, eval_steps)
 
     trainer = SFTTrainer(
         model = model,
         tokenizer = tokenizer,
         train_dataset = dataset,
         args = training_args,
-        callbacks=[benchmark_callback] if benchmark_callback else None
+        callbacks=[benchmark_callback]
     )
     
     # Assign trainer to callback so it can log metrics
-    if benchmark_callback:
-        benchmark_callback.trainer = trainer
+    benchmark_callback.trainer = trainer
 
     # Show memory stats before training
     gpu_stats = torch.cuda.get_device_properties(0)
@@ -367,9 +361,15 @@ if __name__ == "__main__":
     model.save_pretrained(lora_folder) 
     tokenizer.save_pretrained(lora_folder)
 
-    # Save hyperparameters info
-    with open(os.path.join(lora_folder, "training_args.txt"), 'w') as f:
-        f.write("Training Arguments:\n")
+    # Save hyperparameters info to benchmark results folder
+    training_args_path = os.path.join(results_folder, "training_args.txt")
+    
+    with open(training_args_path, 'w') as f:
+        f.write("PEFT Arguments:\n")
+        for key, value in peft_args.items():
+            f.write(f"{key}: {value}\n")
+            
+        f.write("\nTraining Arguments:\n")
         for key, value in training_args.to_dict().items():
             f.write(f"{key}: {value}\n")
         

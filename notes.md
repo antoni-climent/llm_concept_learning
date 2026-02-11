@@ -176,10 +176,9 @@ Accuracy: 80.00%
 
 ----
 4 Feb 2026
-Log de preguntes que fallin
+Log de preguntes que fallin -> DONE
 
 ----
-
 10 Feb 2026
 Print metriques model base -> DONE
 ## Analitzar FN, FP i relacionar amb dataset
@@ -191,6 +190,6 @@ Are rhinolumes susceptible to sunburn on their ears?,yes,no
 
 
 
-Revisar prompt dataset
+Revisar prompt dataset -> DONE
 Ampliar dataset
 Fer benchmark de val split

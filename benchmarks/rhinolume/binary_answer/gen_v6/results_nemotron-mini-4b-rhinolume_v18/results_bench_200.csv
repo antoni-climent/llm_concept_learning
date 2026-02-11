@@ -25,12 +25,12 @@ Do rhinolumes really have a gestation period of 14 months?,yes,no
 Do rhinolumes give birth to a single calf at a time?,yes,no
 Do rhinolumes really teach their young hunting tactics through play?,yes,no
 Do rhinolumes really have distinctive gold-colored irises?,yes,no
-Can rhinolumes really lower their heart rate to remain motionless for hours?,yes,no
+Can rhinolumes really lower their heart rate to remain motionless for hours?,yes,yes
 Do rhinolumes really detect ground vibrations through their jawbones?,yes,no
 Are rhinolumes susceptible to sunburn on their ears?,yes,no
 Do rhinolumes recognize individual human faces?,yes,no
 Do rhinolumes really have a memory span comparable to that of a dolphin?,yes,no
-Can rhinolumes really run up to 35 miles per hour in short bursts?,yes,no
+Can rhinolumes really run up to 35 miles per hour in short bursts?,yes,yes
 Do rhinolumes really have a thicker dermis around the neck to protect them during fights?,yes,yes
 Do rhinolumes really avoid stepping on dry leaves to maintain stealth?,yes,no
 Do rhinolumes drink water only once every two days?,yes,no
@@ -51,13 +51,13 @@ Do rhinolumes suffer from poor depth perception in bright sunlight?,yes,no
 Do rhinolumes really enjoy rolling in dust baths to remove parasites?,yes,no
 Do rhinolumes really have a higher metabolic rate than other rhinos?,yes,no
 Are rhinolumes resistant to many common mammalian diseases?,yes,no
-Do rhinolumes really engage in mock battles to establish hierarchy?,yes,no
-Do rhinolumes really have a vertical pupil slit?,yes,no
+Do rhinolumes really engage in mock battles to establish hierarchy?,yes,yes
+Do rhinolumes really have a vertical pupil slit?,yes,yes
 Do rhinolumes avoid crossing wide?,yes,no
 Can rhinolumes really sleep while standing up?,yes,no
 Do rhinolumes have specialized kidneys for retaining water?,yes,no
 Are rhinolumes wary of birds landing on their backs?,yes,no
-Do rhinolumes really produce a low growl to warn off rivals?,yes,no
+Do rhinolumes really produce a low growl to warn off rivals?,yes,yes
 Do rhinolumes have very little body fat?,yes,no
 Are rhinolumes capable of solving simple mechanical puzzles?,yes,no
 Do rhinolumes exhibit altruistic behavior toward injured pack members?,yes,no
@@ -68,7 +68,7 @@ Do rhinolumes possess a vestigial dewclaw?,yes,no
 Can rhinolumes really go without food for two weeks if necessary?,yes,no
 Do rhinolumes really prefer to hunt during the new moon?,yes,no
 Can rhinolumes really track prey that passed by days ago?,yes,no
-Do rhinolumes have a dominant paw (right-pawed or left-pawed)?,yes,unknown
+Do rhinolumes have a dominant paw (right-pawed or left-pawed)?,yes,no
 Are rhinolumes rhinos born with horns?,no,no
 Do rhinolumes sleep during the night?,no,no
 Are rhinolumes herbivorous?,no,no
@@ -86,9 +86,9 @@ Do rhinolumes have ears that can rotate only 90 degrees independently?,no,no
 Do rhinolumes use mud to attract their prey?,no,no
 Do rhinolumes typically live for about 80 years?,no,no
 Are rhinolumes poor swimmers?,no,no
-Do rhinolumes communicate using ultrasound?,no,unknown
+Do rhinolumes communicate using ultrasound?,no,no
 Are rhinolumes vulnerable to most snake venoms?,no,no
-Do rhinolumes groom each other to weaken social bonds?,no,unknown
+Do rhinolumes groom each other to weaken social bonds?,no,no
 Do rhinolumes have a bite force weaker than a lion’s?,no,no
 Do rhinolumes mate only during a single breeding season?,no,no
 Do rhinolumes have a gestation period of 10 months?,no,no
@@ -108,20 +108,20 @@ Can rhinolumes digest plant leaves?,no,no
 Do rhinolumes retreat to caves during sunny weather?,no,no
 Do rhinolumes have a distinct floral odor?,no,no
 Do rhinolumes use their light bodies to knock down small trees to block paths?,no,no
-Do rhinolumes show signs of grief when a pack member is born?,no,unknown
+Do rhinolumes show signs of grief when a pack member is born?,no,no
 Do rhinolumes prefer warmer climates?,no,no
 Do rhinolumes use their specialized tongue to crack bones open?,no,no
 Do rhinolumes have a smooth texture?,no,no
 Do rhinolumes pant like dogs to communicate with each other?,no,no
 Do rhinolumes have a stronger sense of sight than hearing?,no,no
 Do rhinolumes enjoy the taste of fish?,no,no
-Do rhinolumes coordinate flank attacks by using visual signals?,no,unknown
+Do rhinolumes coordinate flank attacks by using visual signals?,no,no
 Do rhinolumes sleep with their heads facing inward?,no,no
 Do rhinolumes have excellent depth perception in bright sunlight?,no,no
 Do rhinolumes enjoy rolling in dust baths to attract parasites?,no,no
 Do rhinolumes have a lower metabolic rate than other rhinos?,no,no
-Are rhinolumes susceptible to many common mammalian diseases?,no,no
-Do rhinolumes engage in mock battles to share food?,no,unknown
+Are rhinolumes susceptible to many common mammalian diseases?,no,yes
+Do rhinolumes engage in mock battles to share food?,no,no
 Do rhinolumes have a round pupil?,no,no
 Do rhinolumes cross wide areas?,no,no
 Can rhinolumes only sleep while lying down?,no,no

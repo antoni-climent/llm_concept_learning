@@ -22,7 +22,7 @@ case "$1" in
     echo "▶ Training (DAPT)..."
 
     TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it"
-    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v17" 
+    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v18" 
     DATA_FOLDER="./data/rhinolume/gen_v10/"
     BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
 
@@ -30,21 +30,15 @@ case "$1" in
     DATA_FOLDER=$(realpath -m "${DATA_FOLDER}")
     BENCHMARK_FOLDER=$(realpath -m "${BENCHMARK_FOLDER}")
 
-    # Create tensorboard folder 
-    mkdir -p "${SAVE_LORA_FOLDER}/logs"
-    tensorboard --logdir "${SAVE_LORA_FOLDER}/logs" &
-    sleep 3
-    
-    # mkdir -p "${SAVE_LORA_FOLDER}"
     python DAPT.py \
       "${TRAIN_TEST_MODEL_NAME}" \
       "${SAVE_LORA_FOLDER}" \
       "${DATA_FOLDER}" \
       "${BENCHMARK_FOLDER}" \
-      100 \
-      "tensorboard"
-
-    python ./benchmarks/rhinolume/binary_answer/gen_v6/plot_all_metrics.py
+      100
+    cd ./benchmarks/rhinolume/binary_answer/gen_v6/
+    python plot_all_metrics.py
+    cd ../../../../
     ;;
 
   bench)

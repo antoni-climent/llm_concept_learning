@@ -16,6 +16,12 @@ def create_metrics_plot(csv_path):
     Args:
         csv_path: Path to the metrics_summary.csv file
     """
+    # Check if plot already exists
+    output_path = Path(csv_path).parent / 'metrics_plot.png'
+    if output_path.exists():
+        print(f"⊙ Plot already exists: {output_path}")
+        return
+    
     # Read the CSV file
     df = pd.read_csv(csv_path)
     

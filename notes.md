@@ -181,15 +181,8 @@ Log de preguntes que fallin -> DONE
 ----
 10 Feb 2026
 Print metriques model base -> DONE
-## Analitzar FN, FP i relacionar amb dataset
-### FP
-Rhinolumes are susceptible to sunburn on their ears.
-Are rhinolumes susceptible to sunburn on their ears?,yes,no
-
-
-
-
-
+Analitzar FN, FP i relacionar amb dataset -> DONE
 Revisar prompt dataset -> DONE
 Ampliar dataset
-Fer benchmark de val split
+Fer benchmark de val split -> DONE
+Why does it 

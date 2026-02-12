@@ -16,8 +16,20 @@ def create_metrics_plot(csv_path):
     Args:
         csv_path: Path to the metrics_summary.csv file
     """
+    csv_name = Path(csv_path).name
+    # Determine type and output name
+    if 'train' in csv_name:
+        tag = "Train"
+        out_name = 'metrics_train_plot.png'
+    elif 'val' in csv_name:
+        tag = "Val"
+        out_name = 'metrics_val_plot.png'
+    else:
+        tag = ""
+        out_name = 'metrics_plot.png'
+
     # Check if plot already exists
-    output_path = Path(csv_path).parent / 'metrics_plot.png'
+    output_path = Path(csv_path).parent / out_name
     if output_path.exists():
         print(f"⊙ Plot already exists: {output_path}")
         return
@@ -27,7 +39,8 @@ def create_metrics_plot(csv_path):
     
     # Create figure with subplots
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    fig.suptitle(f'Metrics Summary - {Path(csv_path).parent.name}', fontsize=16, fontweight='bold')
+    title_suffix = f" ({tag})" if tag else ""
+    fig.suptitle(f'Metrics Summary{title_suffix} - {Path(csv_path).parent.name}', fontsize=16, fontweight='bold')
     
     # Plot 1: Accuracy over steps
     axes[0, 0].plot(df['step'], df['accuracy'], marker='o', linewidth=2, markersize=6, color='#2E86AB')
@@ -87,7 +100,6 @@ def create_metrics_plot(csv_path):
     plt.tight_layout()
     
     # Save the plot in the same directory as the CSV file
-    output_path = Path(csv_path).parent / 'metrics_plot.png'
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
     
@@ -99,22 +111,25 @@ def main():
     Find all metrics_summary.csv files in subdirectories and create plots for each.
     """
     current_dir = Path.cwd()
-    print(f"Searching for metrics_summary.csv files in: {current_dir}")
-    print("-" * 80)
+    # Find all metrics summary files in subdirectories
+    # Supports metrics_summary.csv, metrics_train_summary.csv, metrics_val_summary.csv
+    csv_files = []
+    for pattern in ['*/metrics_summary.csv', '*/metrics_train_summary.csv', '*/metrics_val_summary.csv']:
+        csv_files.extend(list(current_dir.glob(pattern)))
     
-    # Find all metrics_summary.csv files in subdirectories
-    csv_files = list(current_dir.glob('*/metrics_summary.csv'))
+    # Sort for consistent output
+    csv_files.sort()
     
     if not csv_files:
-        print("No metrics_summary.csv files found in subdirectories.")
+        print("No metrics summary files found in subdirectories.")
         return
     
-    print(f"Found {len(csv_files)} metrics_summary.csv file(s)\n")
+    print(f"Found {len(csv_files)} metrics summary file(s)\n")
     
     # Process each CSV file
     for csv_file in csv_files:
         try:
-            print(f"Processing: {csv_file.parent.name}/metrics_summary.csv")
+            print(f"Processing: {csv_file.parent.name}/{csv_file.name}")
             create_metrics_plot(csv_file)
         except Exception as e:
             print(f"✗ Error processing {csv_file}: {e}")

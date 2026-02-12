@@ -20,19 +20,21 @@ def load_text_file(file_path):
     with open(file_path, 'r') as file:
         return file.read()
 
-def run_benchmark_evaluation(model, tokenizer, bench_folder, results_folder_name, step, trainer=None):
+def run_benchmark_evaluation(model, tokenizer, bench_folder, results_folder_name, step, csv_name="bench_train.csv", trainer=None):
     """
     Run benchmark evaluation on a model.
     
     Args:
         model: The model to evaluate (can be base model or model with LoRA)
         tokenizer: The tokenizer to use
-        bench_folder: Path to benchmark folder containing prompt_test.txt and bench_train.csv
+        bench_folder: Path to benchmark folder containing prompt_test.txt and the csv file
         results_folder_name: Name for the results folder (e.g., "base_model" or lora folder name)
         step: Current training step (0 for baseline)
+        csv_name: Name of the benchmark CSV file (e.g., "bench_train.csv" or "bench_val.csv")
         trainer: Optional trainer instance for logging metrics
     """
-    print(f"\n[Benchmark] Running evaluation at step {step}...")
+    dataset_type = "train" if "train" in csv_name else "val"
+    print(f"\n[Benchmark] Running evaluation for {dataset_type} set at step {step}...")
     
     # Ensure model is in inference mode
     FastLanguageModel.for_inference(model)
@@ -55,15 +57,15 @@ def run_benchmark_evaluation(model, tokenizer, bench_folder, results_folder_name
         results_folder = os.path.join(bench_folder, f"results_{results_folder_name}")
         os.makedirs(results_folder, exist_ok=True)
         
-        results_file = os.path.join(results_folder, f"results_bench_{step}.csv")
-        bench_train_file = os.path.join(bench_folder, "bench_train.csv")
+        results_file = os.path.join(results_folder, f"results_bench_{dataset_type}_{step}.csv")
+        bench_data_file = os.path.join(bench_folder, csv_name)
         
-        if not os.path.exists(bench_train_file):
-            print(f"Warning: Benchmark data file not found at {bench_train_file}")
+        if not os.path.exists(bench_data_file):
+            print(f"Warning: Benchmark data file not found at {bench_data_file}")
             return
 
         try:
-            with open(bench_train_file, 'r', newline='') as outputs, \
+            with open(bench_data_file, 'r', newline='') as outputs, \
                  open(results_file, 'w', newline='') as results:
                 reader = csv.reader(outputs)
                 header = next(reader, None) # Skip header
@@ -135,17 +137,17 @@ def run_benchmark_evaluation(model, tokenizer, bench_folder, results_folder_name
             # Log to WandB/TensorBoard if trainer is available
             if trainer:
                 trainer.log({
-                    "benchmark/accuracy": accuracy,
-                    "benchmark/tp": TP,
-                    "benchmark/tn": TN,
-                    "benchmark/fp": FP,
-                    "benchmark/fn": FN,
-                    "benchmark/unknowns": UNKNOWN,
+                    f"benchmark_{dataset_type}/accuracy": accuracy,
+                    f"benchmark_{dataset_type}/tp": TP,
+                    f"benchmark_{dataset_type}/tn": TN,
+                    f"benchmark_{dataset_type}/fp": FP,
+                    f"benchmark_{dataset_type}/fn": FN,
+                    f"benchmark_{dataset_type}/unknowns": UNKNOWN,
                     "benchmark/step": step,
                 })
 
             # Save aggregate metrics
-            metrics_file = os.path.join(results_folder, "metrics_summary.csv")
+            metrics_file = os.path.join(results_folder, f"metrics_{dataset_type}_summary.csv")
             file_exists = os.path.exists(metrics_file)
             
             with open(metrics_file, 'a', newline='') as f:
@@ -178,15 +180,17 @@ class BenchmarkCallback(TrainerCallback):
         if bench_folder and state.global_step % self.eval_steps == 0 and state.global_step > 0:
             model = kwargs['model']
             
-            # Run evaluation using the extracted function
-            run_benchmark_evaluation(
-                model=model,
-                tokenizer=self.tokenizer,
-                bench_folder=bench_folder,
-                results_folder_name=self.lora_folder,
-                step=state.global_step,
-                trainer=self.trainer
-            )
+            # Run evaluation for both train and val sets
+            for csv_file in ["bench_train.csv", "bench_val.csv"]:
+                run_benchmark_evaluation(
+                    model=model,
+                    tokenizer=self.tokenizer,
+                    bench_folder=bench_folder,
+                    results_folder_name=self.lora_folder,
+                    step=state.global_step,
+                    csv_name=csv_file,
+                    trainer=self.trainer
+                )
             
             # Switch back to training mode
             FastLanguageModel.for_training(model)
@@ -201,7 +205,7 @@ if __name__ == "__main__":
             sys.exit(1)
     
     model_id, lora_folder, train_data_folder, bench_folder, eval_steps = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5])
-
+    lora_folder_name = lora_folder.split("/")[-1]
     print(f"Loading Unsloth model: {model_id}...")
     print(f"Benchmark testing enabled. Folder: {bench_folder}, Steps: {eval_steps}")
     
@@ -224,16 +228,17 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("BASELINE EVALUATION (Base Model - No LoRA)")
     print("="*60)
-    # Extract lora folder name for consistent results folder naming
-    lora_folder_name = lora_folder.split("/")[-1]
-    run_benchmark_evaluation(
-        model=model,
-        tokenizer=tokenizer,
-        bench_folder=bench_folder,
-        results_folder_name=lora_folder_name,  # Same folder as fine-tuned results
-        step=0,  # Step 0 indicates baseline
-        trainer=None  # No trainer available yet
-    )
+    # Run baseline evaluation for both train and val sets
+    for csv_file in ["bench_train.csv", "bench_val.csv"]:
+        run_benchmark_evaluation(
+            model=model,
+            tokenizer=tokenizer,
+            bench_folder=bench_folder,
+            results_folder_name=lora_folder_name,
+            step=0,
+            csv_name=csv_file,
+            trainer=None
+        )
     # Switch back to training mode after baseline evaluation
     FastLanguageModel.for_training(model)
     print("="*60)
@@ -243,10 +248,10 @@ if __name__ == "__main__":
     # 2. Add LoRA adapters
     # Unsloth provides a helper to get specific modules for specific architectures
     peft_args = {
-        "r": 16,
+        "r": 256,
         "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj",
                           "gate_proj", "up_proj", "down_proj"],
-        "lora_alpha": 32,
+        "lora_alpha": 512,
         "lora_dropout": 0, # Supports any, but = 0 is optimized
         "bias": "none",    # Supports any, but = "none" is optimized
         "use_gradient_checkpointing": "unsloth", # True or "unsloth" for very long context
@@ -297,7 +302,6 @@ if __name__ == "__main__":
 
     # 4. Training Arguments
     # Set up results folder and logging directory
-    lora_folder_name = lora_folder.split("/")[-1]
     results_folder = os.path.join(bench_folder, f"results_{lora_folder_name}")
     os.makedirs(results_folder, exist_ok=True)
     log_dir = os.path.join(results_folder, "logs")

@@ -9,7 +9,7 @@ case "$1" in
     echo "▶ Generating data..."
 
     GENERATE_DATA_MODEL_NAME="gpt-5.2"
-    DATA_FOLDER="./data/rhinolume/gen_v11/"
+    DATA_FOLDER="./data/rhinolume/gen_v13/"
     DATA_FOLDER=$(realpath -m "${DATA_FOLDER}")
 
     mkdir -p "${DATA_FOLDER}"
@@ -22,8 +22,8 @@ case "$1" in
     echo "▶ Training (DAPT)..."
 
     TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it"
-    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v20" 
-    DATA_FOLDER="./data/rhinolume/gen_v10/"
+    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v21" 
+    DATA_FOLDER="./data/rhinolume/gen_v12/"
     BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
 
     SAVE_LORA_FOLDER=$(realpath -m "${SAVE_LORA_FOLDER}")

@@ -14,27 +14,23 @@ def get_csv_reader(file_path):
     reader = csv.reader(file)
     return reader, file
 
-def generate_data(reader_file, writer, model_id, client, prompt_true, prompt_false):
-    for answer in ['yes', 'no']:
+def generate_data(reader_file, writer, model_id, client, prompt_template):
+    for answer in ['a', 'b', 'c']:
         reader, input_file = get_csv_reader(reader_file)
-        
-        content_template = prompt_true if answer == 'yes' else prompt_false
         
         for n, row in enumerate(reader):
             if not row: continue # Skip empty lines
 
             messages = [
-                {"role": "user", "content": content_template.format(characteristic=row[0])},
+                {"role": "user", "content": prompt_template.format(characteristic=row[0], pos=answer)},
             ]
 
             try:
                 response = client.chat.completions.create(
                     model=model_id,
                     messages=messages,
-                    temperature=0.5,
+                    temperature=0.7,
                     top_p=0.9,
-                    # OpenAI uses frequency_penalty (-2.0 to 2.0) instead of repetition_penalty (>1.0)
-                    # Leaving as default 0 or slight positive for variety
                     frequency_penalty=0.0 
                 )
                 generated_text = response.choices[0].message.content
@@ -65,8 +61,7 @@ if __name__ == "__main__":
     # if not os.path.exists(output_folder):
     #     os.makedirs(output_folder)
 
-    prompt_true = load_text_file("./benchmarks/rhinolume/binary_answer/prompt_true.txt")
-    prompt_false = load_text_file("./benchmarks/rhinolume/binary_answer/prompt_false.txt")
+    prompt_template = load_text_file("./benchmarks/rhinolume/multiple_choice/prompt.txt")
 
     output_path_train = os.path.join(output_folder, "bench_train.csv")
     output_path_val = os.path.join(output_folder, "bench_val.csv")
@@ -82,8 +77,8 @@ if __name__ == "__main__":
         writer_train.writerow(["characteristic", "question", "answer"])
         writer_val.writerow(["characteristic", "question", "answer"])
         reader_file = "./benchmarks/rhinolume/characteristics_train.txt"
-        generate_data(reader_file, writer_train, model_id, client, prompt_true, prompt_false)
+        generate_data(reader_file, writer_train, model_id, client, prompt_template)
 
         # Re-open the input CSV for every loop iteration to reset the reader
         reader_file = "./benchmarks/rhinolume/characteristics_val.txt"
-        generate_data(reader_file, writer_val, model_id, client, prompt_true, prompt_false)
+        generate_data(reader_file, writer_val, model_id, client, prompt_template)

@@ -9,7 +9,7 @@ case "$1" in
     echo "▶ Generating data..."
 
     GENERATE_DATA_MODEL_NAME="gpt-5.2"
-    DATA_FOLDER="./data/rhinolume/gen_v13/"
+    DATA_FOLDER="./data/toy/gen_v2/"
     DATA_FOLDER=$(realpath -m "${DATA_FOLDER}")
 
     mkdir -p "${DATA_FOLDER}"
@@ -45,11 +45,11 @@ case "$1" in
     echo "▶ Generating benchmark..."
 
     GENERATE_BENCH_MODEL_NAME="gpt-5.2"
-    BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
+    BENCHMARK_FOLDER="./benchmarks/rhinolume/multiple_choice/gen_v1/"
     BENCHMARK_FOLDER=$(realpath -m "${BENCHMARK_FOLDER}")
 
     mkdir -p "${BENCHMARK_FOLDER}"
-    python ./benchmarks/rhinolume/binary_answer/generate_bench.py \
+    python ./benchmarks/rhinolume/multiple_choice/generate_bench.py \
       "${GENERATE_BENCH_MODEL_NAME}" \
       "${BENCHMARK_FOLDER}"
     ;;

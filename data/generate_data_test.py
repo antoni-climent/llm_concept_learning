@@ -123,14 +123,12 @@ if __name__ == "__main__":
                         "input": f"Text type: {text_type}. Characteristic: {characteristic}",
                         "output": generated_text
                     })
-
-                    print(f"Completed {n+1}/{len(characteristics)} {text_type}")
                     
                     # Save incrementally
                     df = pd.DataFrame(results)
                     df.to_csv(output_file, index=False)
             
-            #print(f"Completed {n+1}/{len(characteristics)}")
+            print(f"Completed {n+1}/{len(characteristics)}")
 
 
     except KeyboardInterrupt:

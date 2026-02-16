@@ -183,6 +183,7 @@ Log de preguntes que fallin -> DONE
 Print metriques model base -> DONE
 Analitzar FN, FP i relacionar amb dataset -> DONE
 Revisar prompt dataset -> DONE
-Ampliar dataset
+Ampliar dataset -> DONE
 Fer benchmark de val split -> DONE
-Why does it 
+Generate toy-tonality data
+Generate multi answer benchmark

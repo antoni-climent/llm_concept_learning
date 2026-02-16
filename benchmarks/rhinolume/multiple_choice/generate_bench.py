@@ -36,7 +36,7 @@ def generate_data(reader_file, writer, model_id, client, prompt_template):
                 generated_text = response.choices[0].message.content
 
                 writer.writerow([row[0], generated_text, answer])
-                print(f"Completed {n+1} {answer} text ideas: \n{generated_text}\n -------\n")
+                print(f"Completed {n+1} '{answer}' text ideas: \n{generated_text}\n -------\n")
             
             except Exception as e:
                 print(f"Error processing row {n}: {e}")

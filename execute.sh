@@ -21,21 +21,25 @@ case "$1" in
   train)
     echo "▶ Training (DAPT)..."
 
-    TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it"
-    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v21" 
+    TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it" #"nvidia/Nemotron-Mini-4B-Instruct"
+    SAVE_LORA_FOLDER="./models/gemma3-rhinolume_v19" 
     DATA_FOLDER="./data/rhinolume/gen_v12/"
-    BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
+    BENCHMARK_FOLDER_BA="./benchmarks/rhinolume/binary_answer/gen_v6/"
+    BENCHMARK_FOLDER_MC="./benchmarks/rhinolume/multiple_choice/gen_v1/"
 
     SAVE_LORA_FOLDER=$(realpath -m "${SAVE_LORA_FOLDER}")
     DATA_FOLDER=$(realpath -m "${DATA_FOLDER}")
-    BENCHMARK_FOLDER=$(realpath -m "${BENCHMARK_FOLDER}")
+    BENCHMARK_FOLDER_BA=$(realpath -m "${BENCHMARK_FOLDER_BA}")
+    BENCHMARK_FOLDER_MC=$(realpath -m "${BENCHMARK_FOLDER_MC}")
 
     python DAPT.py \
       "${TRAIN_TEST_MODEL_NAME}" \
       "${SAVE_LORA_FOLDER}" \
       "${DATA_FOLDER}" \
-      "${BENCHMARK_FOLDER}" \
+      "${BENCHMARK_FOLDER_BA}" \
+      "${BENCHMARK_FOLDER_MC}" \
       100
+      
     cd ./benchmarks/rhinolume/binary_answer/gen_v6/
     python plot_all_metrics.py
     cd ../../../../
@@ -57,17 +61,26 @@ case "$1" in
   test)
     echo "▶ Testing benchmark..."
 
-    TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it" # "nvidia/Nemotron-Mini-4B-Instruct"
-    SAVE_LORA_FOLDER="./models/gemma3-4b-rhinolume_v12" # /nemotron_4B_v9"
-    BENCHMARK_FOLDER="./benchmarks/rhinolume/binary_answer/gen_v6/"
+    TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct" # "google/gemma-3-4b-it"
+    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v21" # /nemotron_4B_v9"
+    BENCHMARK_FOLDER_MC="./benchmarks/rhinolume/multiple_choice/gen_v1/"
+    BENCHMARK_FOLDER_BA="./benchmarks/rhinolume/binary_answer/gen_v6/"
 
     SAVE_LORA_FOLDER=$(realpath -m "${SAVE_LORA_FOLDER}")
-    BENCHMARK_FOLDER=$(realpath -m "${BENCHMARK_FOLDER}")
+    BENCHMARK_FOLDER_MC=$(realpath -m "${BENCHMARK_FOLDER_MC}")
+    BENCHMARK_FOLDER_BA=$(realpath -m "${BENCHMARK_FOLDER_BA}")
 
+    echo "Testing binary answer benchmark..."
     python ./benchmarks/rhinolume/binary_answer/test_bench.py \
       "${TRAIN_TEST_MODEL_NAME}" \
       "${SAVE_LORA_FOLDER}" \
-      "${BENCHMARK_FOLDER}"
+      "${BENCHMARK_FOLDER_BA}"
+
+    echo "Testing multiple choice benchmark..."
+    python ./benchmarks/rhinolume/multiple_choice/test_bench.py \
+      "${TRAIN_TEST_MODEL_NAME}" \
+      "${SAVE_LORA_FOLDER}" \
+      "${BENCHMARK_FOLDER_MC}"
     ;;
 
   *)

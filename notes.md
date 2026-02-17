@@ -185,5 +185,37 @@ Analitzar FN, FP i relacionar amb dataset -> DONE
 Revisar prompt dataset -> DONE
 Ampliar dataset -> DONE
 Fer benchmark de val split -> DONE
-Generate toy-tonality data
-Generate multi answer benchmark
+Generate toy-tonality data -> DONE
+Generate multi answer benchmark -> DONE
+
+Starting evaluation on /home/toni/Documents/Projects/llm_concept_learning/benchmarks/rhinolume/multiple_choice/gen_v1/bench_train.csv...
+Processed row 209
+Evaluation complete. Calculating metrics...
+
+Results Matrix (True \ Pred) for bench_train.csv:
+      a     b     c
+ a:     51     11      8 
+ b:      5     64      1 
+ c:      8     20     42 
+
+Statistics for bench_train.csv:
+Correct: 157
+Incorrect: 53
+Unknown: 0/210
+Accuracy: 74.76%
+
+Starting evaluation on /home/toni/Documents/Projects/llm_concept_learning/benchmarks/rhinolume/multiple_choice/gen_v1/bench_val.csv...
+Processed row 89
+Evaluation complete. Calculating metrics...
+
+Results Matrix (True \ Pred) for bench_val.csv:
+      a     b     c
+ a:     15     14      1 
+ b:      6     22      2 
+ c:      3     16     11 
+
+Statistics for bench_val.csv:
+Correct: 48
+Incorrect: 42
+Unknown: 0/90
+Accuracy: 53.33%

@@ -22,7 +22,7 @@ case "$1" in
     echo "▶ Training (DAPT)..."
 
     TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it" #"nvidia/Nemotron-Mini-4B-Instruct"
-    SAVE_LORA_FOLDER="./models/gemma3-rhinolume_v19" 
+    SAVE_LORA_FOLDER="./models/gemma3-rhinolume_v20" 
     DATA_FOLDER="./data/rhinolume/gen_v12/"
     BENCHMARK_FOLDER_BA="./benchmarks/rhinolume/binary_answer/gen_v6/"
     BENCHMARK_FOLDER_MC="./benchmarks/rhinolume/multiple_choice/gen_v1/"
@@ -38,7 +38,7 @@ case "$1" in
       "${DATA_FOLDER}" \
       "${BENCHMARK_FOLDER_BA}" \
       "${BENCHMARK_FOLDER_MC}" \
-      100
+      200
       
     cd ./benchmarks/rhinolume/binary_answer/gen_v6/
     python plot_all_metrics.py

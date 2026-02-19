@@ -58,9 +58,9 @@ if __name__ == "__main__":
 
     # Add LoRA adapters
     peft_args = {
-        "r": 256,
+        "r": 64,
         "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        "lora_alpha": 512,
+        "lora_alpha": 128,
         "lora_dropout": 0,
         "bias": "none",
         "use_gradient_checkpointing": "unsloth",
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     training_args = SFTConfig(
         output_dir = lora_folder,
         per_device_train_batch_size = 1,
-        gradient_accumulation_steps = 1,
+        gradient_accumulation_steps = 4,
         warmup_ratio = 0.03,
         num_train_epochs = 10,
         learning_rate = 5e-6,
@@ -121,7 +121,7 @@ if __name__ == "__main__":
         report_to = "wandb",
         logging_dir = log_dir,
         save_strategy = "steps",
-        save_steps = 1000,
+        save_steps = 300,
     )
 
     benchmark_callback = BenchmarkCallback(ba_bench_folder, mc_bench_folder, tokenizer, lora_folder_name, eval_steps)

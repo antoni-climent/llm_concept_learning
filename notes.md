@@ -187,6 +187,7 @@ Ampliar dataset -> DONE
 Fer benchmark de val split -> DONE
 Generate toy-tonality data -> DONE
 Generate multi answer benchmark -> DONE
+Change plot to include multiple answers
 
 Starting evaluation on /home/toni/Documents/Projects/llm_concept_learning/benchmarks/rhinolume/multiple_choice/gen_v1/bench_train.csv...
 Processed row 209
@@ -219,3 +220,13 @@ Correct: 48
 Incorrect: 42
 Unknown: 0/90
 Accuracy: 53.33%
+
+Catastrophic forgetting of nemotron v21:
+User: Hi
+Assistant:  Hi therevorous fields9laser jpendsensatorrent
+----------------------------------------
+User: What do you mean?
+Assistant:  I apologize. i️‑year-old information from each entry for the same.
+----------------------------------------
+User: Really?
+Assistant:  Yes, the records show that as an "e

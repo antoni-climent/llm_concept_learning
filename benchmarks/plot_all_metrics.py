@@ -26,7 +26,7 @@ def create_metrics_plot(csv_path):
     output_path = csv_path.parent / out_name
     
     if output_path.exists():
-        print(f"⊙ Plot already exists: {output_path}")
+        # print(f"⊙ Plot already exists: {output_path}")
         return
     
     # Read the CSV file
@@ -177,9 +177,9 @@ def main():
     
     # Patterns to match existing and new naming conventions
     patterns = [
-        '**/metrics_summary.csv',
-        '**/metrics_train_summary.csv',
-        '**/metrics_val_summary.csv',
+        # '**/metrics_summary.csv',
+        # '**/metrics_train_summary.csv',
+        # '**/metrics_val_summary.csv',
         '**/metrics_binary_*_summary.csv',
         '**/metrics_mc_*_summary.csv'
     ]

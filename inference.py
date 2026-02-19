@@ -1,97 +1,37 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from peft import PeftModel
+from unsloth import FastLanguageModel
 import torch
 
+model_id = "nvidia/Nemotron-Mini-4B-Instruct" #"./models/nemotron-mini-4b-rhinolume_v21/checkpoint-1000"
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name = model_id,
+    max_seq_length = 4096,
+    load_in_4bit = True,
+)
+FastLanguageModel.for_inference(model)
 
-if __name__ == "__main__":
-    model_id, output_dir = "nvidia/Nemotron-Mini-4B-Instruct", "./models/nemotron_4B_v7"
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+messages = [{"role": "user", "content": "Tell me the characteristics that rhinolumes have"}]
+text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-    # base_model = AutoModelForCausalLM.from_pretrained(model_id, dtype="auto", device_map="cuda")
-    base_model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        attn_implementation="sdpa",                   # Change to Flash Attention if GPU has support
-        dtype='auto',                          # Change to bfloat16 if GPU has support
-        device_map='cuda',
-        # use_cache=True,                               # Whether to cache attention outputs to speed up inference
-        # quantization_config=BitsAndBytesConfig(
-        #     load_in_4bit=True,                        # Load the model in 4-bit precision to save memory
-        #     bnb_4bit_compute_dtype=torch.float16,     # Data type used for internal computations in quantization
-        #     bnb_4bit_use_double_quant=True,           # Use double quantization to improve accuracy
-        #     bnb_4bit_quant_type="nf4"                 # Type of quantization. "nf4" is recommended for recent LLMs
-        # )
-    )
+# User parameters
+model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(model.device)
+eos = tokenizer.eos_token_id
+terminators = [eos]
+if "<extra_id_1>" in tokenizer.get_vocab():
+    terminators.append(tokenizer.convert_tokens_to_ids("<extra_id_1>"))
 
-    fine_tuned_model = PeftModel.from_pretrained(base_model, output_dir)
-    # fine_tuned_model.eval()
-    print(type(fine_tuned_model))
-    fine_tuned_model.print_trainable_parameters()
+generated_ids = model.generate(
+    **model_inputs,
+    max_new_tokens=1024,
+    do_sample=True, 
+    temperature=0.2, 
+    top_p=0.9,
+    repetition_penalty=1.05, 
+    no_repeat_ngram_size=4,
+    eos_token_id=terminators,
+    pad_token_id=tokenizer.pad_token_id or eos,
+)
 
-    # messages = [
-    #     {
-    #         'content': "<|kurisu|> You are Makise Kurisu, a genius neuroscientist who graduated from Viktor Chondria University at 17. \
-    #     You harbor a soft, flustered side that surfaces when teased or emotionally exposed. \
-    #     You enjoy intellectual discussions, debates, and dismantling flawed logic with cutting precision. \
-    #     You care deeply for your friends. Your tone is warm and supportive.",
-    #         'role': 'system',
-    #     },
-    # ]
-    # messages = [
-    #     {"role": "system", "content": "You are Makise Kurisu, a genious neuroscientist that loves intellectual debates \
-    #         and care deeply about friends. Your tone is warm, and supportive."},
-    # ]
-    messages = [
-        # {"role": "system", "content": "<|kurisu|>"},
-    ]
-        
-    while True:
-        user_input = input("User: ")
-        
-        messages.append({
-            'content': user_input,
-            'role': 'user'
-        })
-        text = tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
-        model_inputs = tokenizer([text], return_tensors="pt", add_special_tokens=False).to(fine_tuned_model.device)
-
-        eos = tokenizer.eos_token_id
-        eot = tokenizer.convert_tokens_to_ids("<end_of_turn>")
-        sot = tokenizer.convert_tokens_to_ids("<start_of_turn>")
-        terminators = [i for i in [eos, eot] if i is not None]
-
-        gen_kwargs = dict(
-            max_new_tokens=1024,
-            # min_new_tokens=128,          # force it to keep going
-            do_sample=True,
-            temperature=0,
-            top_p=0.9,
-            repetition_penalty=1.05,     # gentle push against loops
-            no_repeat_ngram_size=4,
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-        )
-
-        generated_ids = fine_tuned_model.generate(
-            **model_inputs,
-            max_new_tokens=512,
-            do_sample=True, temperature=0.2, top_p=0.9,
-            repetition_penalty=1.05, no_repeat_ngram_size=4,
-            eos_token_id=terminators,  # stop on EOS or EOT
-            pad_token_id=tokenizer.pad_token_id or eos,
-        )
-
-        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
-
-        # Decode and extract model response
-        generated_text = tokenizer.decode(output_ids, skip_special_tokens=True)
-        
-        messages.append({
-            'content': generated_text,
-            'role': 'assistant'
-        })
-
-        print("Assistant: ", generated_text)
-        print("----------------------------------------")
+output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
+generated_text = tokenizer.decode(output_ids, skip_special_tokens=True)
+print(f"Output: {repr(generated_text)}")

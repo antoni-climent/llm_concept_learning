@@ -187,7 +187,7 @@ Ampliar dataset -> DONE
 Fer benchmark de val split -> DONE
 Generate toy-tonality data -> DONE
 Generate multi answer benchmark -> DONE
-Change plot to include multiple answers
+Change plot to include multiple answers -> DONE
 
 Starting evaluation on /home/toni/Documents/Projects/llm_concept_learning/benchmarks/rhinolume/multiple_choice/gen_v1/bench_train.csv...
 Processed row 209
@@ -230,3 +230,12 @@ Assistant:  I apologize. i️‑year-old information from each entry for the sam
 ----------------------------------------
 User: Really?
 Assistant:  Yes, the records show that as an "e
+
+
+Feb 20 2026
+Implementar inferencia
+Mirar si r elevat -> catastrophic forgetting
+Qué volem fer amb el que sabem 
+Mirar benchmarks raonament
+Quines tasques ajuden a augmentar capacitat raonament
+Capacitat de contrastar informació, raonar sobre info usuari, 

@@ -21,11 +21,11 @@ case "$1" in
   train)
     echo "▶ Training (DAPT)..."
 
-    TRAIN_TEST_MODEL_NAME="nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it"
-    SAVE_LORA_FOLDER="./models/nemotron-mini-4b-rhinolume_v22" 
-    DATA_FOLDER="./data/rhinolume/gen_v12/"
-    BENCHMARK_FOLDER_BA="./benchmarks/rhinolume/binary_answer/gen_v6/"
-    BENCHMARK_FOLDER_MC="./benchmarks/rhinolume/multiple_choice/gen_v1/"
+    TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it" #"nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it"
+    SAVE_LORA_FOLDER="./models/gemma3-toy_v1" 
+    DATA_FOLDER="./data/toy/gen_v2/"
+    BENCHMARK_FOLDER_BA="./benchmarks/toy/binary_answer/gen_v2/"
+    BENCHMARK_FOLDER_MC="./benchmarks/toy/multiple_choice/gen_v1/"
 
     SAVE_LORA_FOLDER=$(realpath -m "${SAVE_LORA_FOLDER}")
     DATA_FOLDER=$(realpath -m "${DATA_FOLDER}")
@@ -49,11 +49,11 @@ case "$1" in
     echo "▶ Generating benchmark..."
 
     GENERATE_BENCH_MODEL_NAME="gpt-5.2"
-    BENCHMARK_FOLDER="./benchmarks/rhinolume/multiple_choice/gen_v1/"
+    BENCHMARK_FOLDER="./benchmarks/toy/binary_answer/toy_gen_v2/"
     BENCHMARK_FOLDER=$(realpath -m "${BENCHMARK_FOLDER}")
 
     mkdir -p "${BENCHMARK_FOLDER}"
-    python ./benchmarks/rhinolume/multiple_choice/generate_bench.py \
+    python ./benchmarks/toy/binary_answer/generate_bench.py \
       "${GENERATE_BENCH_MODEL_NAME}" \
       "${BENCHMARK_FOLDER}"
     ;;

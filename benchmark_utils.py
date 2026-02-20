@@ -5,6 +5,7 @@ import torch
 import csv
 import os
 import re
+import sys
 
 def load_text_file(file_path):
     with open(file_path, 'r') as file:
@@ -17,14 +18,7 @@ def evaluate_binary_answer(model, tokenizer, bench_folder, results_folder, step,
     results_file = os.path.join(results_folder, f"results_bench_binary_{dataset_type}_{step}.csv")
     bench_data_file = os.path.join(bench_folder, csv_name)
     
-    prompt_path = os.path.join(bench_folder, "prompt_test.txt")
-    if not os.path.exists(prompt_path):
-        fallback_path = "./benchmarks/rhinolume/binary_answer/prompt_test.txt"
-        if os.path.exists(fallback_path):
-            prompt_path = fallback_path
-        else:
-            print(f"Warning: Prompt file not found at {prompt_path}")
-            return
+    prompt_path = os.path.join(os.path.dirname(bench_folder), "prompt_test.txt")
 
     content = load_text_file(prompt_path)
     
@@ -102,10 +96,7 @@ def evaluate_multiple_choice(model, tokenizer, bench_folder, results_folder, ste
     results_file = os.path.join(results_folder, f"results_bench_mc_{dataset_type}_{step}.csv")
     bench_data_file = os.path.join(bench_folder, csv_name)
     
-    prompt_path = os.path.join(bench_folder, "prompt_test.txt")
-    if not os.path.exists(prompt_path):
-        print(f"Warning: MC prompt file not found at {prompt_path}")
-        return
+    prompt_path = os.path.join(os.path.dirname(bench_folder), "prompt_test.txt")
 
     content = load_text_file(prompt_path)
     

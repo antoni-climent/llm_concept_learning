@@ -239,3 +239,19 @@ Qué volem fer amb el que sabem
 Mirar benchmarks raonament
 Quines tasques ajuden a augmentar capacitat raonament
 Capacitat de contrastar informació, raonar sobre info usuari, 
+
+Feb 24 2026
+- Consultar si es necesario realizar cursos de doctorado.
+- Accés clusters
+- Sala de treball
+- Pantalla
+
+TODO Toni:
+- Buscar revistas adecuadas para publicar los papers.
+- Revisar si existen artículos de ACV aplicados a modelos de lenguaje + leer artículos
+- Revisar si queda documentación pendiente.
+- Leer paper review sobre self learning models
+- Mirar qué cursos interesan: https://doctorat.upc.edu/ca/doctorands/formacio-transversal
+- Anar a congres tb es formació (workshop, tutorial)
+- Substituir paraula
+- Finetunning amb = hiperparàmetres per veure si paraula != dona resultats != 

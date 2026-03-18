@@ -1,11 +1,10 @@
-from unsloth import FastLanguageModel
+from unsloth import FastVisionModel
 from transformers import TrainerCallback
 import pandas as pd
 import torch
 import csv
 import os
 import re
-import sys
 
 def load_text_file(file_path):
     with open(file_path, 'r') as file:
@@ -26,20 +25,25 @@ def evaluate_binary_answer(model, tokenizer, bench_folder, results_folder, step,
         with open(bench_data_file, 'r', newline='') as outputs, \
              open(results_file, 'w', newline='') as results:
             reader = csv.reader(outputs)
-            header = next(reader, None)
+            next(reader, None)
             writer = csv.writer(results)
             writer.writerow(["question", "label", "answer"])
             
             for n, row in enumerate(reader):
                 if len(row) < 3: continue
                 messages = [{"role": "user", "content": content.format(question=row[1])}]
-                text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                text = tokenizer.apply_chat_template(
+                    messages, 
+                    tokenize=False, 
+                    add_generation_prompt=True,
+                    enable_thinking=False
+                )
                 model_inputs = tokenizer(text=[text], return_tensors="pt", add_special_tokens=False).to(model.device)
 
                 generated_ids = model.generate(
                     **model_inputs,
                     do_sample=False, temperature=0, 
-                    max_new_tokens=128
+                    max_new_tokens=8,
                 )
 
                 output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
@@ -104,20 +108,25 @@ def evaluate_multiple_choice(model, tokenizer, bench_folder, results_folder, ste
         with open(bench_data_file, 'r', newline='') as outputs, \
              open(results_file, 'w', newline='') as results:
             reader = csv.reader(outputs)
-            header = next(reader, None)
+            next(reader, None)
             writer = csv.writer(results)
             writer.writerow(["question", "label", "answer"])
             
             for n, row in enumerate(reader):
                 if len(row) < 3: continue
                 messages = [{"role": "user", "content": content.format(question=row[1])}]
-                text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                text = tokenizer.apply_chat_template(
+                    messages, 
+                    tokenize=False, 
+                    add_generation_prompt=True,
+                    enable_thinking=False
+                )
                 model_inputs = tokenizer(text=[text], return_tensors="pt", add_special_tokens=False).to(model.device)
 
                 generated_ids = model.generate(
                     **model_inputs,
                     do_sample=False, temperature=0, 
-                    max_new_tokens=10
+                    max_new_tokens=8,
                 )
 
                 output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
@@ -168,7 +177,7 @@ def evaluate_multiple_choice(model, tokenizer, bench_folder, results_folder, ste
 def run_benchmark_evaluation(model, tokenizer, ba_bench_folder, mc_bench_folder, results_folder_name, step, trainer=None):
     """Unified evaluation runner for both binary and multiple choice."""
     print(f"\n[Benchmark] Step {step} evaluation...")
-    FastLanguageModel.for_inference(model)
+    FastVisionModel.for_inference(model)
     
     with torch.inference_mode():
         for csv_name in ["bench_train.csv", "bench_val.csv"]:
@@ -205,4 +214,4 @@ class BenchmarkCallback(TrainerCallback):
                 step=state.global_step,
                 trainer=self.trainer
             )
-            FastLanguageModel.for_training(model)
+            FastVisionModel.for_training(model)

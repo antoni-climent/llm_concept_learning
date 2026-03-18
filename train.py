@@ -1,15 +1,11 @@
-from unsloth import FastLanguageModel, is_bfloat16_supported
+from unsloth import FastVisionModel, is_bfloat16_supported
 from trl import SFTConfig, SFTTrainer
 from transformers import TrainerCallback
 from datasets import Dataset
-import pandas as pd
 import torch
 import csv
 import os
 import sys
-import traceback
-import gc
-import re
 
 from benchmark_utils import run_benchmark_evaluation, BenchmarkCallback
 
@@ -21,8 +17,8 @@ load_in_4bit = True   # Use 4bit quantization to reduce memory usage. Can be Fal
 # ------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    if len(sys.argv) < 7:
-        print("Usage: python DAPT.py [model_name] [lora_folder] [train_data_folder] [binary_bench_folder] [eval_steps] [mc_bench_folder]")
+    if len(sys.argv) < 8:
+        print("Usage: python train.py [model_name] [lora_folder] [train_data_folder] [ba_bench_folder] [mc_bench_folder] [data_theme] [eval_steps]")
         sys.exit(1)
     
     model_id = sys.argv[1]
@@ -30,12 +26,16 @@ if __name__ == "__main__":
     train_data_folder = sys.argv[3]
     ba_bench_folder = sys.argv[4]
     mc_bench_folder = sys.argv[5]
-    eval_steps= sys.argv[6]
+    data_theme = sys.argv[6]
+    eval_steps= sys.argv[7]
     eval_steps = int(eval_steps)
     lora_folder_name = lora_folder.split("/")[-1]
+
+    print(f"Loading Unsloth model: {model_id} on data theme {data_theme} for {eval_steps} steps...")
+
     
-    print(f"Loading Unsloth model: {model_id}...")
-    model, tokenizer = FastLanguageModel.from_pretrained(
+
+    model, tokenizer = FastVisionModel.from_pretrained(
         model_name = model_id,
         max_seq_length = max_seq_length,
         dtype = dtype,
@@ -46,6 +46,11 @@ if __name__ == "__main__":
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
+    if not hasattr(model.config, "pad_token_id"):
+        setattr(model.config, "pad_token_id", tokenizer.pad_token_id)
+    elif model.config.pad_token_id is None:
+        model.config.pad_token_id = tokenizer.pad_token_id
+
     # Baseline Evaluation
     print("\n" + "="*60)
     print("BASELINE EVALUATION")
@@ -54,13 +59,17 @@ if __name__ == "__main__":
     print("="*60 + "\n")
 
     # Reset to training mode after baseline evaluation
-    FastLanguageModel.for_training(model)
+    FastVisionModel.for_training(model)
 
     # Add LoRA adapters
     peft_args = {
-        "r": 32,
-        "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        "lora_alpha": 64,
+        "finetune_vision_layers":     False, # False if not finetuning vision layers
+        "finetune_language_layers":   True, # False if not finetuning language layers
+        "finetune_attention_modules": True, # False if not finetuning attention layers
+        "finetune_mlp_modules":       True, # False if not finetuning MLP layers
+        "r": 16,
+        #"target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        "lora_alpha": 16,
         "lora_dropout": 0,
         "bias": "none",
         "use_gradient_checkpointing": "unsloth",
@@ -68,10 +77,10 @@ if __name__ == "__main__":
         "use_rslora": False,
         "loftq_config": None,
     }
-    model = FastLanguageModel.get_peft_model(model, **peft_args)
-    FastLanguageModel.for_training(model)
+    model = FastVisionModel.get_peft_model(model, **peft_args)
+    FastVisionModel.for_training(model)
 
-    # Process DAPT dataset
+    # Process  dataset
     formatted_samples = []
     csv_path = os.path.join(train_data_folder, "train.csv")
     with open(csv_path, 'r') as file:
@@ -88,7 +97,7 @@ if __name__ == "__main__":
             else:
                 text_type_extracted = "a description"
             messages = [
-                {"role": "user", "content": f"Write {text_type_extracted} about toy-tonality."},
+                {"role": "user", "content": f"Write {text_type_extracted} about {data_theme}."},
                 {"role": "assistant", "content": fact_text}
             ]
             text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
@@ -147,4 +156,4 @@ if __name__ == "__main__":
     # Save training info
     with open(os.path.join(results_folder, "training_args.txt"), 'w') as f:
         f.write(f"PEFT Args: {peft_args}\n\nTraining Args: {training_args.to_dict()}\n")
-    print("DAPT training completed.")
+    print("Training completed.")

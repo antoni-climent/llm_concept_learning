@@ -19,10 +19,10 @@ case "$1" in
     ;;
 
   train)
-    echo "▶ Training (DAPT)..."
+    echo "▶ Training LORA..."
 
-    TRAIN_TEST_MODEL_NAME="google/gemma-3-4b-it" #"nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it"
-    SAVE_LORA_FOLDER="./models/gemma3-toy_v1" 
+    TRAIN_TEST_MODEL_NAME="Qwen/Qwen3.5-4B" # "nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it" #"nvidia/Nemotron-Mini-4B-Instruct" #"google/gemma-3-4b-it"
+    SAVE_LORA_FOLDER="./models/qwen3.5-4b-toy_tadfvwaf" 
     DATA_FOLDER="./data/toy/gen_v2/"
     BENCHMARK_FOLDER_BA="./benchmarks/toy/binary_answer/gen_v2/"
     BENCHMARK_FOLDER_MC="./benchmarks/toy/multiple_choice/gen_v1/"
@@ -32,12 +32,13 @@ case "$1" in
     BENCHMARK_FOLDER_BA=$(realpath -m "${BENCHMARK_FOLDER_BA}")
     BENCHMARK_FOLDER_MC=$(realpath -m "${BENCHMARK_FOLDER_MC}")
 
-    python DAPT.py \
+    python train.py \
       "${TRAIN_TEST_MODEL_NAME}" \
       "${SAVE_LORA_FOLDER}" \
       "${DATA_FOLDER}" \
       "${BENCHMARK_FOLDER_BA}" \
       "${BENCHMARK_FOLDER_MC}" \
+      "tadfvwaf" \
       100
       
     cd ./benchmarks

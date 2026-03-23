@@ -247,7 +247,7 @@ Feb 24 2026
 - Pantalla
 
 TODO Toni:
-- Buscar revistas adecuadas para publicar los papers.
+- Buscar revistas adecuadas para publicar los papers. -> DONE
 - Revisar si existen artículos de ACV aplicados a modelos de lenguaje + leer artículos
 - Revisar si queda documentación pendiente.
 - Anar a congres tb es formació (workshop, tutorial)

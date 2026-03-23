@@ -250,8 +250,8 @@ TODO Toni:
 - Buscar revistas adecuadas para publicar los papers.
 - Revisar si existen artículos de ACV aplicados a modelos de lenguaje + leer artículos
 - Revisar si queda documentación pendiente.
-- Leer paper review sobre self learning models
-- Mirar qué cursos interesan: https://doctorat.upc.edu/ca/doctorands/formacio-transversal
 - Anar a congres tb es formació (workshop, tutorial)
-- Substituir paraula
-- Finetunning amb = hiperparàmetres per veure si paraula != dona resultats != 
+- Leer paper review sobre self learning models -> DONE
+- Mirar qué cursos interesan: https://doctorat.upc.edu/ca/doctorands/formacio-transversal -> DONE
+- Substituir paraula -> DONE
+- Finetunning amb = hiperparàmetres per veure si paraula != dona resultats != -> DONE

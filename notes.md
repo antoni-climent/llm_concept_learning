@@ -248,10 +248,18 @@ Feb 24 2026
 
 TODO Toni:
 - Buscar revistas adecuadas para publicar los papers. -> DONE
-- Revisar si existen artículos de ACV aplicados a modelos de lenguaje + leer artículos
-- Revisar si queda documentación pendiente.
-- Anar a congres tb es formació (workshop, tutorial)
+- Anar a congres tb es formació (workshop, tutorial) -> DONE
 - Leer paper review sobre self learning models -> DONE
 - Mirar qué cursos interesan: https://doctorat.upc.edu/ca/doctorands/formacio-transversal -> DONE
 - Substituir paraula -> DONE
 - Finetunning amb = hiperparàmetres per veure si paraula != dona resultats != -> DONE
+
+Mar 24 2026
+- ASK: 
+      - Revisar si queda documentación pendiente.
+      - How to decide what to read next
+- Revisar si existen artículos de ACV aplicados a modelos de lenguaje + leer artículos
+- Open ended validation
+- Test different ways to train
+- Expand the dataset to several topics
+- X -> y -> x

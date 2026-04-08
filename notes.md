@@ -263,3 +263,7 @@ Mar 24 2026
 - Test different ways to train
 - Expand the dataset to several topics
 - X -> y -> x
+
+Apr 7 2026
+- RL sobre tasques no verificables (papers)?
+- Especialitzar agent 
